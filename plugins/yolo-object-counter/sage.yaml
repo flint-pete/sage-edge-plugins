@@ -1,0 +1,50 @@
+name: "yolo-object-counter"
+namespace: "waggle"
+version: "0.1.0"
+description: "YOLO11x object counter — detects and counts objects in camera frames, publishes per-class counts and uploads annotated images. Runs real-time on GPU-equipped edge nodes."
+authors: "Pete Beckman <pete.beckman@northwestern.edu>"
+collaborators: "Waggle Team <https://wa8.gl>"
+funding: "NSF 1935984"
+license: "The license agreed by Argonne National Laboratory"
+keywords: "object detection, YOLO, machine learning, camera, counting, computer vision, urban analytics, wildlife monitoring"
+homepage: "https://github.com/waggle-sensor/plugin-yolo-object-counter/blob/main/ecr-meta/ecr-science-description.md"
+source:
+    architectures:
+        - "linux/arm64"
+        - "linux/amd64"
+    url: "https://github.com/waggle-sensor/plugin-yolo-object-counter.git"
+    branch: "main"
+inputs:
+    - id: "stream"
+      type: "string"
+      description: "Camera stream name (e.g. bottom_camera, top_camera) or RTSP URL"
+    - id: "model"
+      type: "string"
+      description: "YOLO model name/path — yolo11x.pt (default, 54.7% mAP), yolo11n.pt (speed), yolov8x.pt"
+    - id: "interval"
+      type: "int"
+      description: "Seconds between captures (default: 30)"
+    - id: "conf-thres"
+      type: "float"
+      description: "Confidence threshold 0.0–1.0 (default: 0.25)"
+    - id: "iou-thres"
+      type: "float"
+      description: "IoU threshold for non-maximum suppression (default: 0.45)"
+    - id: "classes"
+      type: "string"
+      description: "Comma-separated COCO class names to count, e.g. 'person,car,bird'. Empty = all 80 classes"
+    - id: "continuous"
+      type: "string"
+      description: "Y = continuous loop (default), N = single-shot inference"
+    - id: "upload-image"
+      type: "string"
+      description: "Y = upload annotated image with bounding boxes each cycle (default: Y)"
+resources:
+    - type: "RGB_image_producer"
+      view: "street"
+      min_resolution: "640x480"
+metadata:
+    ontology: env.count.*
+testing:
+    mask_entrypoint: true
+    command: ["python3", "-m", "pytest", "tests/test_yolo.py", "-v"]

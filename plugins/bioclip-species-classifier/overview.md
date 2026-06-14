@@ -1,0 +1,461 @@
+# BioCLIP2 Species Classifier — Plugin Overview
+
+A comprehensive tutorial for understanding, configuring, and deploying the
+BioCLIP2 Species Classifier plugin on the Sage Continuum edge computing
+platform.
+
+---
+
+## Table of Contents
+
+1. [What This Plugin Does](#what-this-plugin-does)
+2. [File Layout](#file-layout)
+3. [How It Works (Internals)](#how-it-works-internals)
+4. [Configuration Reference](#configuration-reference)
+5. [Understanding Taxonomic Ranks](#understanding-taxonomic-ranks)
+6. [Local Testing (No Node Required)](#local-testing)
+7. [Deployment on a Sage Node](#deployment-on-a-sage-node)
+8. [Data Published](#data-published)
+9. [Querying Your Data](#querying-your-data)
+10. [Key Issues and Pitfalls](#key-issues-and-pitfalls)
+11. [Example Scenarios](#example-scenarios)
+
+---
+
+## 1. What This Plugin Does
+
+The BioCLIP2 Species Classifier captures frames from a camera, identifies
+biological organisms in the image using the BioCLIP2 vision-language model,
+and publishes the top-k taxonomic predictions with confidence scores to the
+Sage data store.
+
+Think of it as an automated field biologist: every minute the node looks at
+what the camera sees and says "That's a Passeriformes (songbird) with 73%
+confidence — could also be Falconiformes (raptor) at 12%."
+
+**What is BioCLIP2?** It is a contrastive vision-language model specifically
+trained for biological image recognition.  Unlike general-purpose image
+classifiers (ResNet, CLIP), BioCLIP2 was trained on the TreeOfLife-200M
+dataset — over 200 million biological images spanning 450,000+ species.
+This gives it unmatched zero-shot accuracy for identifying organisms in
+natural settings.
+
+**Why at the edge?** Ecological camera networks generate terabytes of
+images.  Streaming all of them to the cloud for classification is impractical.
+Running BioCLIP2 on-node means only compact taxonomic records travel to the
+data store — species name, confidence, and (optionally) the source image
+for verification.
+
+---
+
+## 2. File Layout
+
+```
+bioclip-species-classifier/
+├── app.py                          # Main application (202 lines)
+├── Dockerfile                      # Container build — downloads model at build time
+├── requirements.txt                # Python dependencies
+├── sage.yaml                       # ECR metadata
+├── overview.md                     # This file
+└── ecr-meta/                       # ECR submission metadata
+    ├── README                      # Instructions for ECR submission
+    ├── ecr-science-description.md  # Science narrative
+    ├── ecr-credits-license.txt     # Authors, funding, license
+    ├── ecr-project-keywords.txt    # Search keywords
+    └── ecr-project-url.txt         # Project URL
+    (ecr-icon.jpg)                  # 512x512 icon — create before submission
+    (ecr-science-image.jpg)         # 1920x1080 science image — create before submission
+```
+
+### What each file does
+
+| File | Purpose |
+|------|---------|
+| `app.py` | Model loading, camera capture, classification, publishing |
+| `Dockerfile` | Two-stage build: installs deps, pre-downloads BioCLIP2 model + runs warmup |
+| `requirements.txt` | pywaggle, pybioclip, torch, opencv-python-headless, pillow |
+| `sage.yaml` | Plugin name, version, inputs (with descriptions), ontology |
+| `ecr-meta/` | Portal display metadata: science description, keywords, credits |
+
+---
+
+## 3. How It Works (Internals)
+
+### Startup Sequence
+
+```
+1. Parse command-line arguments
+2. Create BioCLIP2Classifier instance
+   ├── Instantiate TreeOfLifeClassifier(model_str="hf-hub:imageomics/bioclip-2")
+   │   ├── Downloads model weights (~1.7 GB) if not cached
+   │   ├── Loads SigLIP2 vision encoder + text encoder
+   │   └── Pre-computes text embeddings for all taxa at the target rank
+   └── Store the Rank enum for classification
+3. Open camera stream via pywaggle Camera
+4. Enter main loop
+```
+
+### Main Loop (one iteration)
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ 1. cam.snapshot()                                        │
+│    └── Captures a single frame → ImageSample             │
+│    └── Convert to PIL Image (RGB)                        │
+│                                                          │
+│ 2. classifier.classify(image, top_k=5)                   │
+│    └── Calls TreeOfLifeClassifier.predict()              │
+│    └── Returns list of dicts with all taxonomic ranks    │
+│    └── Extracts target rank + score, sorts descending    │
+│    └── Returns [{name: "Passeriformes", confidence: 0.73}│
+│                  {name: "Falconiformes", confidence: 0.12}│
+│                  ...]                                    │
+│                                                          │
+│ 3. Publish top-1 prediction                              │
+│    └── plugin.publish("env.species.order", "Passeriforme"│
+│    └── plugin.publish("env.species.order.confidence", 0.7│
+│                                                          │
+│ 4. Publish top-k as JSON                                 │
+│    └── plugin.publish("env.species.top5", json_string)   │
+│                                                          │
+│ 5. Upload source image                                   │
+│    └── Save frame to temp JPEG                           │
+│    └── plugin.upload_file()                               │
+│                                                          │
+│ 6. Sleep(interval) and repeat (if continuous=Y)           │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Key Classes
+
+**`BioCLIP2Classifier`** (lines 57–108)
+- `__init__(rank, model_str)`: loads the TreeOfLifeClassifier, validates
+  the rank against `RANK_MAP`
+- `classify(image, top_k)`: runs classification, returns `[{name, confidence}]`
+- The `RANK_MAP` dict maps string rank names → `bioclip.Rank` enum values
+
+**`TreeOfLifeClassifier`** (from pybioclip library)
+- Handles all the heavy lifting: model loading, tokenisation, text embedding
+  pre-computation for ~450K species
+- The `predict()` method returns raw dicts with keys for every taxonomic
+  level (kingdom, phylum, class, order, family, genus, species, common_name,
+  score)
+- Our wrapper extracts just the target rank level
+
+### The pybioclip Abstraction
+
+We use `pybioclip` rather than raw `open_clip` because:
+1. **TreeOfLifeClassifier** pre-computes text embeddings for all taxa —
+   without it, you'd need to manually tokenise 450K+ species names
+2. **Rank-based classification** is built-in — just pass `rank=Rank.ORDER`
+3. **Model loading** handles BioCLIP2's SigLIP2 architecture automatically
+4. Result format gives you the full taxonomic hierarchy, not just a class ID
+
+---
+
+## 4. Configuration Reference
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--stream` | string | `bottom_camera` | Camera source |
+| `--rank` | string | `Class` | Taxonomic rank (see Section 5) |
+| `--model` | string | `hf-hub:imageomics/bioclip-2` | BioCLIP model string |
+| `--interval` | int | `60` | Seconds between captures |
+| `--min-confidence` | float | `0.1` | Minimum confidence to publish |
+| `--top-k` | int | `5` | Number of top predictions |
+| `--continuous` | string | `Y` | `Y` = loop, `N` = single-shot |
+
+### Key Parameter Interactions
+
+- **`--rank` and `--min-confidence`**: Higher-level ranks (Kingdom, Phylum)
+  tend to produce higher confidence scores than lower-level ranks (Genus,
+  Species) because there are fewer categories to distinguish.  Adjust
+  `--min-confidence` accordingly:
+  - Kingdom/Phylum: `0.3–0.5` is reasonable
+  - Class/Order: `0.1–0.3` is reasonable
+  - Species: `0.01–0.1` may be needed (thousands of candidates)
+
+- **`--top-k` and storage**: Each top-k result is published as a JSON array
+  in `env.species.top5`.  Higher k values produce larger payloads but
+  provide richer data for downstream analysis.
+
+---
+
+## 5. Understanding Taxonomic Ranks
+
+The Linnaean taxonomy used by BioCLIP2:
+
+```
+Kingdom → Phylum → Class → Order → Family → Genus → Species
+  broadest                                        most specific
+
+Example: American Robin
+  Kingdom:  Animalia
+  Phylum:   Chordata
+  Class:    Aves          ← "it's a bird"
+  Order:    Passeriformes ← "it's a songbird"
+  Family:   Turdidae      ← "it's a thrush"
+  Genus:    Turdus
+  Species:  Turdus migratorius
+```
+
+**Choosing the right rank depends on your science question:**
+
+| Question | Rank | Why |
+|----------|------|-----|
+| "Is it an animal, plant, or fungus?" | Kingdom | Broadest separation |
+| "Is it a bird, mammal, or insect?" | Class | Common ecological grouping |
+| "What kind of bird?" | Order/Family | Finer ecological distinction |
+| "What species is it?" | Species | Most specific (requires clear images) |
+
+**Accuracy vs specificity tradeoff**: BioCLIP2 is very accurate at Class
+level (>90% on iNaturalist test sets) but accuracy drops at Species level
+because of the huge number of candidates (450K+) and visual similarity
+between closely related species.
+
+---
+
+## 6. Local Testing (No Node Required)
+
+### Quick Start
+
+```bash
+# 1. Set up environment
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+# 2. Redirect output to local files
+export PYWAGGLE_LOG_DIR=./test-output
+
+# 3. Run single-shot classification
+python3 app.py --stream test-image.jpg --rank Order --continuous N
+
+# 4. Inspect results
+cat test-output/data.ndjson
+```
+
+### What the Output Looks Like
+
+```json
+{"timestamp":"...","name":"env.species.order","value":"Passeriformes","meta":{"rank":"Order","model":"bioclip-2"}}
+{"timestamp":"...","name":"env.species.order.confidence","value":0.734,"meta":{"rank":"Order","model":"bioclip-2"}}
+{"timestamp":"...","name":"env.species.top5","value":"[{\"name\":\"Passeriformes\",\"confidence\":0.734},...]","meta":{}}
+```
+
+### Running the Test Suite
+
+```bash
+cd /path/to/Sage-agents
+source tests/.venv/bin/activate
+
+# Unit test (no GPU needed, uses mocked model)
+python3 -m pytest tests/test_bioclip.py -v
+
+# Integration test (GPU required, downloads real model)
+python3 -m pytest tests/test_bioclip_integration.py -v
+```
+
+### Testing Different Ranks
+
+```bash
+# Test at Species rank (slow, needs ~45 seconds for text embeddings)
+python3 app.py --stream bird-photo.jpg --rank Species --continuous N
+
+# Test at Kingdom rank (fast)
+python3 app.py --stream mushroom.jpg --rank Kingdom --continuous N
+```
+
+---
+
+## 7. Deployment on a Sage Node
+
+### Docker Build
+
+The Dockerfile has an important multi-stage design:
+
+```dockerfile
+# Stage 1: Download model weights at build time
+RUN python3 -c "from bioclip.predict import TreeOfLifeClassifier; \
+    TreeOfLifeClassifier(model_str='hf-hub:imageomics/bioclip-2')"
+
+# Stage 2: Run a warmup inference to pre-compile kernels
+RUN python3 -c "from PIL import Image; from bioclip.predict import ...; \
+    classifier.predict(images=[Image.new('RGB',(224,224))], rank=Rank.CLASS, k=1)"
+```
+
+**Why download at build time?** Edge nodes may have no internet access.
+The model must be baked into the container image.  The warmup step
+pre-compiles CUDA kernels, reducing first-inference latency from ~45s to ~3s.
+
+```bash
+docker build -t registry.sagecontinuum.org/waggle/bioclip-species-classifier:0.1.0 .
+docker push registry.sagecontinuum.org/waggle/bioclip-species-classifier:0.1.0
+```
+
+### Job YAML Example
+
+```yaml
+name: bioclip-bird-survey
+plugins:
+  - name: bioclip-species-classifier
+    pluginSpec:
+      image: registry.sagecontinuum.org/waggle/bioclip-species-classifier:0.1.0
+      args:
+        - "--stream"
+        - "bottom_camera"
+        - "--rank"
+        - "Order"
+        - "--interval"
+        - "60"
+        - "--min-confidence"
+        - "0.15"
+nodes:
+  W019:
+scienceRules:
+  - "schedule(bioclip-species-classifier): cronjob('classify-species', '*/5 * * * *')"
+successcriteria:
+  - WallClock('7day')
+```
+
+---
+
+## 8. Data Published
+
+| Topic | Type | Example | Description |
+|-------|------|---------|-------------|
+| `env.species.<rank>` | string | `"Passeriformes"` | Top-1 taxon name at the configured rank |
+| `env.species.<rank>.confidence` | float | `0.734` | Top-1 confidence (0–1) |
+| `env.species.top5` | string | `"[{...}]"` | JSON array of top-k predictions |
+
+Plus one uploaded JPEG: the source image for verification.
+
+The `<rank>` in the topic name is lowercase: `env.species.order`,
+`env.species.class`, `env.species.species`, etc.
+
+---
+
+## 9. Querying Your Data
+
+```python
+import sage_data_client
+
+# Get all species classifications from last hour
+df = sage_data_client.query(
+    start="-1h",
+    filter={"name": "env.species.*", "vsn": "W019"}
+)
+
+# Get just the top-1 predictions
+df_top1 = df[df["name"].str.endswith(".order")]
+print(df_top1[["timestamp", "value"]])
+```
+
+---
+
+## 10. Key Issues and Pitfalls
+
+### Model Download is Large
+
+The BioCLIP2 model is ~1.7 GB.  The TreeOfLife text embeddings add
+another ~200 MB.  First download takes several minutes.  Always bake into
+the Docker image.
+
+### Rank Changes Require Recomputation
+
+Changing the `--rank` parameter triggers re-computation of text embeddings
+for all taxa at that rank.  At Species rank, this covers 450,000+ species
+and takes ~45 seconds.  At Class rank, it covers ~50 classes and takes
+<1 second.  The embeddings are cached in memory for the plugin's lifetime.
+
+### Image Quality Matters
+
+BioCLIP2's accuracy depends heavily on image quality:
+- **Clear, centered subjects** → best results
+- **Distant/blurry subjects** → classification drops to higher ranks
+- **Night/IR images** → very poor results (model trained on RGB daylight)
+- **Multiple organisms** → classifies the most prominent one
+
+### pybioclip Version
+
+The plugin requires `pybioclip >= 2.1.0` for BioCLIP2 support.  Earlier
+versions only support the original BioCLIP model.
+
+### Meta Values Must Be Strings
+
+Same as all pywaggle plugins: all `meta={}` values must be strings.
+The app.py code uses `str()` wrapping throughout.
+
+### HuggingFace Offline Mode
+
+The Dockerfile sets `HF_HUB_OFFLINE=1` after downloading the model.
+This prevents accidental internet access at runtime (which would fail on
+air-gapped edge nodes and cause cryptic timeout errors).
+
+### Memory Usage
+
+BioCLIP2 uses ~1.5 GB GPU memory.  This is very lightweight compared to
+the 128 GB available on Thor nodes, allowing easy co-deployment with YOLO
+and even vLLM.
+
+---
+
+## 11. Example Scenarios
+
+### Scenario A: Bird Order Classification at a Feeder
+
+```bash
+python3 app.py \
+    --stream bottom_camera \
+    --rank Order \
+    --interval 60 \
+    --min-confidence 0.15 \
+    --top-k 5
+```
+
+Expected output: identifies visiting birds as Passeriformes (songbirds),
+Columbiformes (doves), Piciformes (woodpeckers), etc.
+
+### Scenario B: Invasive Species Alert
+
+```bash
+python3 app.py \
+    --stream bottom_camera \
+    --rank Species \
+    --interval 30 \
+    --min-confidence 0.05 \
+    --top-k 10
+```
+
+With Species-level classification, downstream analysis can flag detections
+matching a known invasive species list (e.g., Sturnus vulgaris — European
+Starling in North America).
+
+### Scenario C: Broad Ecological Survey
+
+```bash
+python3 app.py \
+    --stream bottom_camera \
+    --rank Class \
+    --interval 120
+```
+
+Classifies at the broadest useful level: Aves (birds), Mammalia (mammals),
+Insecta (insects), Magnoliopsida (flowering plants).  Good for baseline
+biodiversity assessment.
+
+---
+
+## Appendix: Performance Benchmarks (DGX Spark / Sage Thor)
+
+Measured on NVIDIA GB10 (Blackwell), 128 GB unified memory, aarch64:
+
+| Metric | Value |
+|--------|-------|
+| Model load time | 3.11 s (from cache) |
+| Text embedding warmup | 3.73 s (Class rank, ~50 categories) |
+| Average inference | ~483 ms per image (Species rank) |
+| Class-level inference | ~3.4 s per image |
+| GPU memory | ~1.5 GB |
+
+Note: Class-level classification is slower than Species because the text
+embeddings are larger at higher taxonomic levels in the TreeOfLife hierarchy.

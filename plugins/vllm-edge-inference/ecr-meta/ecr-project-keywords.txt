@@ -1,0 +1,15 @@
+Large Language Model
+Vision-Language Model
+vLLM
+Scene Description
+Natural Language
+Qwen
+Edge Computing
+Camera
+Machine Learning
+Deep Learning
+Inference
+Real-time
+GPU
+Neural Networks
+Computer Vision

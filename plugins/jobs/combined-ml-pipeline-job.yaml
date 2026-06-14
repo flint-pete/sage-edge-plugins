@@ -1,0 +1,65 @@
+# ──────────────────────────────────────────────────────────────
+# Combined ML Pipeline — all three plugins on one node
+# YOLO detects + counts, BioCLIP identifies species,
+# vLLM describes the full scene in natural language
+# ──────────────────────────────────────────────────────────────
+name: ml-pipeline-full
+plugins:
+  - name: yolo-object-counter
+    pluginSpec:
+      image: registry.sagecontinuum.org/waggle/yolo-object-counter:0.1.0
+      args:
+        - "--stream"
+        - "bottom_camera"
+        - "--model"
+        - "yolo11x.pt"
+        - "--interval"
+        - "30"
+        - "--classes"
+        - ""
+        - "--continuous"
+        - "Y"
+      selector:
+        resource.gpu: "true"
+
+  - name: bioclip-species-classifier
+    pluginSpec:
+      image: registry.sagecontinuum.org/waggle/bioclip-species-classifier:0.1.0
+      args:
+        - "--stream"
+        - "bottom_camera"
+        - "--rank"
+        - "Class"
+        - "--interval"
+        - "60"
+        - "--continuous"
+        - "Y"
+      selector:
+        resource.gpu: "true"
+
+  - name: vllm-edge-inference
+    pluginSpec:
+      image: registry.sagecontinuum.org/waggle/vllm-edge-inference:0.1.0
+      args:
+        - "--stream"
+        - "bottom_camera"
+        - "--model"
+        - "Qwen/Qwen3-VL-32B-Instruct"
+        - "--interval"
+        - "120"
+        - "--gpu-mem-frac"
+        - "0.58"
+        - "--dtype"
+        - "bfloat16"
+        - "--enforce-eager"
+        - "--continuous"
+        - "Y"
+      selector:
+        resource.gpu: "true"
+
+nodes:
+  W097: true
+scienceRules:
+  - "schedule(yolo-object-counter): cronjob('yolo-object-counter', '*/5 * * * *')"
+  - "schedule(bioclip-species-classifier): cronjob('bioclip-species-classifier', '*/10 * * * *')"
+  - "schedule(vllm-edge-inference): cronjob('vllm-edge-inference', '*/5 * * * *')"
