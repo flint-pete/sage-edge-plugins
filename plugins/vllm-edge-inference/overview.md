@@ -343,8 +343,8 @@ cat test-output/data.ndjson
 ### Running the Test Suite
 
 ```bash
-cd /path/to/Sage-agents
-source tests/.venv/bin/activate
+cd /path/to/Sage-agents/plugins/vllm-edge-inference
+source ../../tests/.venv/bin/activate
 
 # Unit test (no GPU needed, mocks vLLM HTTP calls)
 python3 -m pytest tests/test_vllm.py -v

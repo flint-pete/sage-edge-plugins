@@ -50,9 +50,9 @@ from pathlib import Path
 
 # ── Paths ────────────────────────────────────────────────────────────
 TESTS_DIR = Path(__file__).parent
-PROJECT_DIR = TESTS_DIR.parent
-PLUGIN_APP = PROJECT_DIR / "plugins" / "yolo-object-counter" / "app.py"
-TEST_IMAGES = TESTS_DIR / "test-images" / "yolo"
+PLUGIN_DIR = TESTS_DIR.parent
+PLUGIN_APP = PLUGIN_DIR / "app.py"
+TEST_IMAGES = TESTS_DIR / "test-images"
 OUTPUT_DIR = TESTS_DIR / "output" / "yolo-local"
 
 

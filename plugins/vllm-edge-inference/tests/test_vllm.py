@@ -16,8 +16,7 @@ from unittest.mock import MagicMock, patch
 
 # ── Setup paths ──────────────────────────────────────────────────────
 TESTS_DIR = Path(__file__).parent
-PROJECT_DIR = TESTS_DIR.parent
-PLUGIN_DIR = PROJECT_DIR / "plugins" / "vllm-edge-inference"
+PLUGIN_DIR = TESTS_DIR.parent
 sys.path.insert(0, str(TESTS_DIR))
 sys.path.insert(0, str(PLUGIN_DIR))
 

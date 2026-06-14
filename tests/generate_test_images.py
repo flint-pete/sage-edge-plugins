@@ -9,12 +9,20 @@ Creates three images simulating typical Sage node camera captures:
 These are deliberately simple synthetic images. They won't produce
 meaningful ML results but they exercise the full plugin pipeline:
 camera capture -> preprocessing -> model inference -> publish.
+
+Usage:
+  python generate_test_images.py                      # writes to tests/sample-images/
+  python generate_test_images.py /path/to/output/dir  # writes to specified directory
 """
 import os
+import sys
 import numpy as np
 import cv2
 
-OUT_DIR = os.path.join(os.path.dirname(__file__), "sample-images")
+if len(sys.argv) > 1:
+    OUT_DIR = sys.argv[1]
+else:
+    OUT_DIR = os.path.join(os.path.dirname(__file__), "sample-images")
 os.makedirs(OUT_DIR, exist_ok=True)
 
 

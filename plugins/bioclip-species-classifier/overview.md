@@ -222,34 +222,34 @@ between closely related species.
 Test images live in the project's shared test directory, organized per plugin:
 
 ```
-Sage-agents/
-└── tests/
-    ├── test-images/
-    │   └── bioclip/           ← Put your test photos here
-    │       ├── test1.jpg      ← Hummingbird (included)
-    │       ├── my-bird.jpg    ← Add your own
-    │       └── my-insect.png  ← Any JPG/PNG/WEBP/BMP/TIFF
-    ├── test_bioclip_local.py  ← Local test runner (recommended)
-    ├── test_bioclip.py        ← Unit test (mocked model, no GPU)
-    └── test_bioclip_integration.py  ← Integration test (real model, GPU)
+plugins/bioclip-species-classifier/
+├── app.py                           ← The plugin
+├── tests/
+│   ├── test-images/
+│   │   ├── test1.jpg                ← Hummingbird (included)
+│   │   ├── my-bird.jpg              ← Add your own
+│   │   └── my-insect.png            ← Any JPG/PNG/WEBP/BMP/TIFF
+│   ├── test_bioclip_local.py        ← Local test runner (recommended)
+│   ├── test_bioclip.py              ← Unit test (mocked model, no GPU)
+│   └── test_bioclip_integration.py  ← Integration test (real model, GPU)
 ```
 
 ### Quick Start — Local Test Runner
 
 The `test_bioclip_local.py` script is the primary tool for evaluating
 BioCLIP2 performance on your own images.  It runs the actual plugin
-(app.py) against every image in `tests/test-images/bioclip/`, validates
+(app.py) against every image in `tests/test-images/`, validates
 the pywaggle output, and prints a detailed report with per-image
 predictions, confidence bars, and timing.
 
 ```bash
 # 1. Activate the test environment
-cd /path/to/Sage-agents
-source tests/.venv/bin/activate
+cd /path/to/Sage-agents/plugins/bioclip-species-classifier
+source ../../tests/.venv/bin/activate
 
 # 2. Add your test images (any number, any supported format)
-cp  field-photo-1.jpg  tests/test-images/bioclip/
-cp  camera-trap.png    tests/test-images/bioclip/
+cp  field-photo-1.jpg  tests/test-images/
+cp  camera-trap.png    tests/test-images/
 
 # 3. Run the test — default is Species rank
 python tests/test_bioclip_local.py
@@ -261,7 +261,7 @@ python tests/test_bioclip_local.py
 ======================================================================
   BioCLIP2 LOCAL TEST
 ======================================================================
-  Test images:  tests/test-images/bioclip
+  Test images:  tests/test-images
   Image count:  2
     - field-photo-1.jpg  (512 KB)
     - test1.jpg  (971 KB)
@@ -335,8 +335,8 @@ This is useful for debugging or testing custom flags:
 export PYWAGGLE_LOG_DIR=./my-test-output
 
 # Run single-shot against the test images
-python plugins/bioclip-species-classifier/app.py \
-    --image-dir tests/test-images/bioclip \
+python app.py \
+    --image-dir tests/test-images \
     --rank Species \
     --continuous N \
     --top-k 5
@@ -360,18 +360,19 @@ Each image produces 3 measurements + 1 upload:
 ### Running the Test Suite
 
 ```bash
-cd /path/to/Sage-agents
-source tests/.venv/bin/activate
+cd /path/to/Sage-agents/plugins/bioclip-species-classifier
+source ../../tests/.venv/bin/activate
 
 # Unit test (no GPU needed, uses mocked model)
 python3 -m pytest tests/test_bioclip.py -v
 
 # Integration test (GPU required, downloads real BioCLIP2 model)
-#   Automatically uses real images from tests/test-images/bioclip/ if available,
+#   Automatically uses real images from tests/test-images/ if available,
 #   otherwise falls back to synthetic sample images.
 python3 -m pytest tests/test_bioclip_integration.py -v
 
-# Run all tests
+# Run all tests (from project root — runs all plugins)
+cd ../..
 bash tests/run-all-tests.sh
 ```
 

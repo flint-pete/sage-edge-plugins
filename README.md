@@ -193,24 +193,31 @@ ls test-output/uploads/          # Uploaded image files
 
 ### Test Suite
 
-The `tests/` directory contains a complete test harness with two levels:
+Each plugin has self-contained tests in `plugins/<name>/tests/`.  A shared
+virtual environment at `tests/.venv` provides all dependencies.
 
 **Unit Tests** (no GPU required — mocked models):
 ```bash
-cd tests
-pip install -r requirements.txt
-python -m pytest test_yolo.py test_bioclip.py test_vllm.py -v
+source tests/.venv/bin/activate
+
+# Per-plugin
+python -m pytest plugins/yolo-object-counter/tests/test_yolo.py -v
+python -m pytest plugins/bioclip-species-classifier/tests/test_bioclip.py -v
+python -m pytest plugins/vllm-edge-inference/tests/test_vllm.py -v
+
+# All at once
+bash tests/run-all-tests.sh
 ```
 
 **Integration Tests** (real GPU inference — requires CUDA device):
 ```bash
-cd tests
-python test_yolo_integration.py      # ~30s: loads yolo11x.pt, runs 3 images
-python test_bioclip_integration.py   # ~60s: loads BioCLIP-2, Class + Species
-python test_vllm_integration.py      # ~25min: downloads/loads Qwen3-VL-32B
+source tests/.venv/bin/activate
+python plugins/yolo-object-counter/tests/test_yolo_integration.py      # ~30s
+python plugins/bioclip-species-classifier/tests/test_bioclip_integration.py   # ~60s
+python plugins/vllm-edge-inference/tests/test_vllm_integration.py      # ~25min
 ```
 
-Test output goes to `tests/output/{yolo,bioclip,vllm}-integration/` with
+Test output goes to each plugin's `tests/output/` directory with
 `test_results.json` (full metrics) and `data.ndjson` + `uploads/` (published data).
 
 
@@ -287,13 +294,32 @@ plugins/
 
 tests/
     generate_test_images.py             # 190 lines — synthetic test image generator
-    test_yolo.py                        # 170 lines — unit tests (mocked)
-    test_yolo_integration.py            # 248 lines — GPU integration test
-    test_bioclip.py                     # 188 lines — unit tests (mocked)
-    test_bioclip_integration.py         # 240 lines — GPU integration test
-    test_vllm.py                        # 193 lines — unit tests (mocked)
-    test_vllm_integration.py            # 343 lines — GPU integration test
-    test_harness.py                     # 152 lines — shared test utilities
+    run-all-tests.sh                    # Discovers and runs all plugin unit tests
+
+  yolo-object-counter/
+    tests/
+      test_yolo.py                      # Unit tests (mocked)
+      test_yolo_integration.py          # GPU integration test
+      test_yolo_local.py                # Standalone local test runner
+      test_harness.py                   # Shared test utilities
+      test-images/                      # Real test images (committed)
+      sample-images/                    # Synthetic test images (generated)
+
+  bioclip-species-classifier/
+    tests/
+      test_bioclip.py                   # Unit tests (mocked)
+      test_bioclip_integration.py       # GPU integration test
+      test_bioclip_local.py             # Standalone local test runner
+      test_harness.py                   # Shared test utilities
+      test-images/                      # Real test images (committed)
+      sample-images/                    # Synthetic test images (generated)
+
+  vllm-edge-inference/
+    tests/
+      test_vllm.py                      # Unit tests (mocked)
+      test_vllm_integration.py          # GPU integration test
+      test_harness.py                   # Shared test utilities
+      sample-images/                    # Synthetic test images (generated)
 ```
 
 ### ECR Submission Readiness

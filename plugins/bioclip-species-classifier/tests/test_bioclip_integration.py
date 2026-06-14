@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-YOLO Integration Test — Real Model Inference on DGX Spark
-Downloads yolo11x.pt, runs real inference on test images,
-verifies detections and pywaggle publish/upload.
+BioCLIP2 Integration Test — Real Model Inference on DGX Spark
+Downloads BioCLIP2 (imageomics/bioclip-2) + TreeOfLife-200M embeddings,
+runs real species classification on test images, verifies pywaggle publish/upload.
 
-Requires: GPU with CUDA, ultralytics, pywaggle, opencv, torch
+Requires: GPU with CUDA, pybioclip, pywaggle, opencv, torch
 """
 import json
 import os
@@ -16,10 +16,13 @@ import shutil
 import cv2
 import numpy as np
 import torch
-from ultralytics import YOLO
+from PIL import Image
+
+from bioclip import Rank
+from bioclip.predict import TreeOfLifeClassifier
 
 # ── pywaggle local output setup ─────────────────────────────────────
-OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output", "yolo-integration")
+OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output", "bioclip-integration")
 if os.path.exists(OUTPUT_DIR):
     shutil.rmtree(OUTPUT_DIR)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -29,7 +32,7 @@ from waggle.plugin import Plugin
 
 # ── paths ────────────────────────────────────────────────────────────
 SAMPLE_DIR = os.path.join(os.path.dirname(__file__), "sample-images")
-TEST_IMAGE_DIR = os.path.join(os.path.dirname(__file__), "test-images", "yolo")
+TEST_IMAGE_DIR = os.path.join(os.path.dirname(__file__), "test-images")
 
 # Use real test images if available, fall back to synthetic sample-images
 if os.path.isdir(TEST_IMAGE_DIR):
@@ -49,59 +52,41 @@ else:
     IMAGES = ["urban_street.jpg", "wildlife.jpg", "sky_clouds.jpg"]
     print(f"No real test images in {TEST_IMAGE_DIR}, using synthetic samples")
 
-MODEL_NAME = "yolo11x.pt"
-
-
-def draw_boxes(frame, detections):
-    """Draw bounding boxes on frame."""
-    annotated = frame.copy()
-    for det in detections:
-        x1, y1, x2, y2 = det["bbox"]
-        label = f"{det['class']} {det['confidence']:.2f}"
-        color = (0, 255, 0)
-        cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 2)
-        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
-        cv2.rectangle(annotated, (x1, y1 - th - 6), (x1 + tw, y1), color, -1)
-        cv2.putText(annotated, label, (x1, y1 - 4),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 1)
-    return annotated
+MODEL_STR = "hf-hub:imageomics/bioclip-2"
+RANKS_TO_TEST = ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"]
+RANK_MAP = {
+    "Kingdom": Rank.KINGDOM, "Phylum": Rank.PHYLUM, "Class": Rank.CLASS,
+    "Order": Rank.ORDER, "Family": Rank.FAMILY, "Genus": Rank.GENUS,
+    "Species": Rank.SPECIES,
+}
 
 
 def main():
     print("=" * 70)
-    print("YOLO INTEGRATION TEST — Real Model Inference")
-    print(f"Model: {MODEL_NAME}")
+    print("BioCLIP2 INTEGRATION TEST — Real Model Inference")
+    print(f"Model: {MODEL_STR}")
     print(f"Device: {'CUDA' if torch.cuda.is_available() else 'CPU'}")
     if torch.cuda.is_available():
         print(f"GPU: {torch.cuda.get_device_name(0)}")
-        mem_total = torch.cuda.get_device_properties(0).total_memory
-        if mem_total > 0:
-            print(f"GPU Memory: {mem_total / 1e9:.1f} GB")
-        else:
-            print("GPU Memory: unified memory (reported as 0)")
     print("=" * 70)
 
     # ── 1. Load model ────────────────────────────────────────────────
-    print(f"\n[1/4] Loading {MODEL_NAME}...")
+    print(f"\n[1/4] Loading BioCLIP2 TreeOfLifeClassifier...")
     t0 = time.time()
-    model = YOLO(MODEL_NAME)
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model.to(device)
+    classifier = TreeOfLifeClassifier(model_str=MODEL_STR)
     load_time = time.time() - t0
-    print(f"  Model loaded in {load_time:.2f}s on {device}")
-    print(f"  Classes: {len(model.names)}")
-    print(f"  Parameters: {sum(p.numel() for p in model.model.parameters()) / 1e6:.1f}M")
+    print(f"  Model + embeddings loaded in {load_time:.2f}s")
 
     # ── 2. Warmup ────────────────────────────────────────────────────
     print("\n[2/4] Warmup inference...")
-    dummy = np.random.randint(0, 255, (640, 640, 3), dtype=np.uint8)
+    dummy = Image.fromarray(np.zeros((224, 224, 3), dtype=np.uint8))
     t0 = time.time()
-    model(dummy, verbose=False)
+    classifier.predict([dummy], rank=Rank.CLASS, k=3)
     warmup_time = time.time() - t0
     print(f"  Warmup done in {warmup_time:.2f}s")
 
     # ── 3. Run inference on test images ──────────────────────────────
-    print(f"\n[3/4] Running inference on {len(IMAGES)} test images from {IMAGE_DIR}...")
+    print(f"\n[3/4] Running inference on {len(IMAGES)} test images...")
     all_results = []
 
     for img_name in IMAGES:
@@ -115,43 +100,45 @@ def main():
             print(f"  SKIP {img_name} — failed to read")
             continue
 
+        pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
         h, w = frame.shape[:2]
 
-        t0 = time.time()
-        results = model(frame, conf=0.25, iou=0.45, verbose=False)
-        inf_time = time.time() - t0
-
-        detections = []
-        for r in results:
-            for box in r.boxes:
-                cls_name = r.names[int(box.cls[0])]
-                x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
-                detections.append({
-                    "class": cls_name,
-                    "confidence": float(box.conf[0]),
-                    "bbox": [int(x1), int(y1), int(x2), int(y2)],
-                })
-
-        # Count per class
-        counts = {}
-        for det in detections:
-            counts[det["class"]] = counts.get(det["class"], 0) + 1
-
-        result = {
+        img_result = {
             "image": img_name,
             "resolution": f"{w}x{h}",
-            "inference_ms": round(inf_time * 1000, 1),
-            "total_detections": len(detections),
-            "class_counts": counts,
-            "detections": detections,
+            "ranks": {},
         }
-        all_results.append(result)
 
-        print(f"\n  {img_name} ({w}x{h})")
-        print(f"    Inference: {inf_time*1000:.1f}ms")
-        print(f"    Detections: {len(detections)}")
-        for cls, cnt in sorted(counts.items()):
-            print(f"      {cls}: {cnt}")
+        # Test classification at Class rank (primary) and Species rank
+        for rank_name in ["Class", "Species"]:
+            t0 = time.time()
+            predictions = classifier.predict(
+                [pil_image], rank=RANK_MAP[rank_name], k=5
+            )
+            inf_time = time.time() - t0
+
+            # pybioclip returns list of dicts with rank keys + 'score'
+            rank_key = rank_name.lower()
+            sorted_preds = []
+            for r in predictions:
+                if rank_key == "species":
+                    name = r.get("species", r.get("genus", "Unknown"))
+                else:
+                    name = r.get(rank_key, "Unknown")
+                sorted_preds.append({"name": name, "confidence": float(r["score"])})
+
+            rank_result = {
+                "inference_ms": round(inf_time * 1000, 1),
+                "predictions": sorted_preds[:5],
+            }
+            img_result["ranks"][rank_name] = rank_result
+
+            print(f"\n  {img_name} ({w}x{h}) — Rank: {rank_name}")
+            print(f"    Inference: {inf_time*1000:.1f}ms")
+            for i, pred in enumerate(sorted_preds[:5], 1):
+                print(f"    #{i}: {pred['name']} ({pred['confidence']:.6f})")
+
+        all_results.append(img_result)
 
     # ── 4. Publish via pywaggle ──────────────────────────────────────
     print(f"\n[4/4] Publishing results via pywaggle...")
@@ -165,49 +152,50 @@ def main():
             frame = cv2.imread(img_path)
             ts = time.time_ns()
 
-            # Publish per-class counts
-            for cls_name, count in result["class_counts"].items():
-                topic = f"env.count.{cls_name}"
+            # Use Class rank predictions for publishing
+            class_preds = result["ranks"].get("Class", {}).get("predictions", [])
+            if class_preds and class_preds[0]["confidence"] >= 0.01:
+                top = class_preds[0]
+
                 plugin.publish(
-                    topic, count,
+                    "env.species.class", top["name"],
                     timestamp=ts,
-                    meta={"camera": "test", "model": MODEL_NAME},
+                    meta={"camera": "test", "rank": "Class", "model": MODEL_STR},
                 )
                 published += 1
 
-            # Publish total
-            plugin.publish(
-                "env.count.total",
-                result["total_detections"],
-                timestamp=ts,
-                meta={"camera": "test", "model": MODEL_NAME},
-            )
-            published += 1
+                plugin.publish(
+                    "env.species.class.confidence", top["confidence"],
+                    timestamp=ts,
+                    meta={"camera": "test", "rank": "Class"},
+                )
+                published += 1
 
-            # Upload annotated image
-            if result["detections"]:
-                annotated = draw_boxes(frame, result["detections"])
+                plugin.publish(
+                    "env.species.top5",
+                    json.dumps(class_preds),
+                    timestamp=ts,
+                    meta={"camera": "test", "rank": "Class"},
+                )
+                published += 1
+
+                # Upload image
                 tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False, dir=OUTPUT_DIR)
-                cv2.imwrite(tmp.name, annotated)
+                cv2.imwrite(tmp.name, frame)
                 plugin.upload_file(tmp.name, timestamp=ts,
                                    meta={"camera": "test",
-                                         "detections": str(result["total_detections"])})
+                                         "top_species": top["name"],
+                                         "confidence": str(top["confidence"])})
                 uploaded += 1
 
     # ── Summary ──────────────────────────────────────────────────────
     print("\n" + "=" * 70)
     print("RESULTS SUMMARY")
     print("=" * 70)
-    print(f"Model: {MODEL_NAME}")
-    print(f"Device: {device}")
+    print(f"Model: {MODEL_STR}")
     print(f"Model load time: {load_time:.2f}s")
     print(f"Warmup time: {warmup_time:.2f}s")
     print(f"Images processed: {len(all_results)}")
-
-    total_dets = sum(r["total_detections"] for r in all_results)
-    avg_ms = sum(r["inference_ms"] for r in all_results) / max(len(all_results), 1)
-    print(f"Total detections: {total_dets}")
-    print(f"Avg inference time: {avg_ms:.1f}ms")
     print(f"Published measurements: {published}")
     print(f"Uploaded images: {uploaded}")
 
@@ -229,8 +217,8 @@ def main():
 
     # ── Pass/Fail ────────────────────────────────────────────────────
     passed = True
-    if total_dets == 0:
-        print("\nFAIL: No detections at all!")
+    if not all_results:
+        print("\nFAIL: No images processed!")
         passed = False
     if published == 0:
         print("\nFAIL: No measurements published!")
@@ -239,23 +227,27 @@ def main():
         print("\nFAIL: No images uploaded!")
         passed = False
 
+    # Verify all images got predictions
+    for result in all_results:
+        for rank_name, rank_data in result["ranks"].items():
+            if not rank_data["predictions"]:
+                print(f"\nFAIL: No predictions for {result['image']} at {rank_name}")
+                passed = False
+
     if passed:
-        print("\n✓ YOLO INTEGRATION TEST PASSED")
+        print("\n✓ BioCLIP2 INTEGRATION TEST PASSED")
     else:
-        print("\n✗ YOLO INTEGRATION TEST FAILED")
+        print("\n✗ BioCLIP2 INTEGRATION TEST FAILED")
         sys.exit(1)
 
     # Save detailed results
     results_path = os.path.join(OUTPUT_DIR, "test_results.json")
     with open(results_path, "w") as f:
         json.dump({
-            "model": MODEL_NAME,
-            "device": device,
+            "model": MODEL_STR,
             "load_time_s": round(load_time, 2),
             "warmup_time_s": round(warmup_time, 2),
             "images": all_results,
-            "total_detections": total_dets,
-            "avg_inference_ms": round(avg_ms, 1),
             "published": published,
             "uploaded": uploaded,
         }, f, indent=2)

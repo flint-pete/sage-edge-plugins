@@ -258,16 +258,16 @@ against the committed test images, validates pywaggle output, and prints a
 detailed per-image report.  This is the go-to test for verifying detection
 quality on your own images before deploying to a Sage node.
 
-**Test image directory**: `tests/test-images/yolo/`  
+**Test image directory**: `tests/test-images/`  
 Images in this directory are committed to the repo and shared across the
 team.  Drop any JPG/PNG/WEBP image here — photos of streets, animals,
 indoor scenes, or anything containing COCO objects.
 
 ```bash
-cd Sage-agents
-source tests/.venv/bin/activate
+cd Sage-agents/plugins/yolo-object-counter
+source ../../tests/.venv/bin/activate
 
-# Default: detect all 80 COCO classes in test-images/yolo/
+# Default: detect all 80 COCO classes in tests/test-images/
 python tests/test_yolo_local.py
 
 # Filter to specific classes
@@ -281,7 +281,7 @@ python tests/test_yolo_local.py -v
 ```
 
 **What the runner does:**
-1. Discovers all images in `tests/test-images/yolo/`
+1. Discovers all images in `tests/test-images/`
 2. Invokes `app.py --image-dir ...` with your chosen parameters
 3. Parses the pywaggle `data.ndjson` output
 4. Prints per-image class counts with visual bars
@@ -294,7 +294,7 @@ python tests/test_yolo_local.py -v
 ======================================================================
   YOLO LOCAL TEST
 ======================================================================
-  Test images:  tests/test-images/yolo
+  Test images:  tests/test-images
   Image count:  1
     - test1.jpg  (971 KB)
   Confidence:   0.25
@@ -331,18 +331,19 @@ The full test suite includes both unit tests (mocked model, no GPU) and
 integration tests (real model, GPU required):
 
 ```bash
-cd Sage-agents
-source tests/.venv/bin/activate
+cd Sage-agents/plugins/yolo-object-counter
+source ../../tests/.venv/bin/activate
 
 # Unit test — fast, no GPU, mocked YOLO model
 python3 -m pytest tests/test_yolo.py -v
 
 # Integration test — real yolo11x.pt on GPU, uses test images
-# Automatically picks up images from tests/test-images/yolo/ if present,
+# Automatically picks up images from tests/test-images/ if present,
 # otherwise falls back to synthetic images in tests/sample-images/.
 python3 -m pytest tests/test_yolo_integration.py -v
 
-# Run everything
+# Run everything (from project root — runs all plugins)
+cd ../..
 bash tests/run-all-tests.sh
 ```
 
