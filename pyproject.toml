@@ -1,0 +1,6 @@
+# pyproject.toml — Sage Edge Plugins
+# Configures pytest to use importlib import mode, which avoids
+# module name collisions when multiple plugins have test_harness.py.
+
+[tool.pytest.ini_options]
+import_mode = "importlib"

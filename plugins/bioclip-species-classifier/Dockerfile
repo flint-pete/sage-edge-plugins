@@ -12,9 +12,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Fix OpenCV headless conflict with pre-installed version
 RUN pip install --no-cache-dir --force-reinstall opencv-python-headless>=4.8.0
 
-COPY app.py .
-
 # Pre-download BioCLIP2 model weights and TreeOfLife-200M embeddings
+# Layer order matters: model weights change rarely, app.py changes often.
+# Putting the model download BEFORE COPY app.py means code edits don't
+# invalidate the expensive (~2 GB) model + embeddings download layer.
 # pybioclip handles caching via HuggingFace Hub
 RUN python -c "\
 from bioclip.predict import TreeOfLifeClassifier; \
@@ -29,5 +30,7 @@ print('BioCLIP2 model + embeddings cached')"
 ENV HF_HOME=/root/.cache/huggingface
 ENV HF_HUB_OFFLINE=1
 ENV TRANSFORMERS_OFFLINE=1
+
+COPY app.py .
 
 ENTRYPOINT ["python", "/app/app.py"]
