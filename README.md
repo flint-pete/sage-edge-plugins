@@ -166,14 +166,18 @@ differences from discrete-GPU systems:
    then Triton JIT compilation and warmup add another 2-3 minutes.
 
 
-## Job Specifications (`plugins/jobs/`)
+## Job Specifications
 
-| File | Description |
-|------|-------------|
-| `yolo-counter-job.yaml` | YOLO counting people/cars on node W097 (Chicago) |
-| `bioclip-species-job.yaml` | BioCLIP at Order rank on node W019 |
-| `vllm-scene-job.yaml` | vLLM scene description on node W097 |
-| `combined-ml-pipeline-job.yaml` | All three plugins running together on one node |
+Each plugin includes a sample Sage job YAML in its own `jobs/` directory:
+
+| Plugin | Job File | Description |
+|--------|----------|-------------|
+| yolo-object-counter | `jobs/yolo-counter-job.yaml` | YOLO counting people/cars on node W097 (Chicago) |
+| bioclip-species-classifier | `jobs/bioclip-species-job.yaml` | BioCLIP at Order rank on node W019 |
+| vllm-edge-inference | `jobs/vllm-scene-job.yaml` | vLLM scene description on node W097 |
+
+A combined pipeline job that deploys all three plugins together lives at the
+top-level `jobs/combined-ml-pipeline-job.yaml`.
 
 
 ## Local Testing
@@ -259,6 +263,16 @@ plugins/
       ecr-credits-license.txt           # Authors, funding (NSF 1935984), license
       ecr-project-keywords.txt          # Search keywords (ontology-aligned)
       ecr-project-url.txt               # GitHub URL
+    jobs/
+      yolo-counter-job.yaml             # Sample job: deploy on W097 (Chicago)
+    tests/
+      run-tests.sh                      # Run all tests for this plugin
+      test_yolo.py                      # Unit tests (mocked)
+      test_yolo_integration.py          # GPU integration test
+      test_yolo_local.py                # Standalone local test runner
+      test_harness.py                   # Pywaggle test harness library
+      test-images/                      # Real test images (committed)
+      sample-images/                    # Synthetic test images (generated)
 
   bioclip-species-classifier/
     app.py                              # 202 lines — BioCLIP-2 classification
@@ -272,6 +286,16 @@ plugins/
       ecr-credits-license.txt           # Authors, funding, license
       ecr-project-keywords.txt          # Search keywords
       ecr-project-url.txt               # GitHub URL
+    jobs/
+      bioclip-species-job.yaml          # Sample job: deploy on W019
+    tests/
+      run-tests.sh                      # Run all tests for this plugin
+      test_bioclip.py                   # Unit tests (mocked)
+      test_bioclip_integration.py       # GPU integration test
+      test_bioclip_local.py             # Standalone local test runner
+      test_harness.py                   # Pywaggle test harness library
+      test-images/                      # Real test images (committed)
+      sample-images/                    # Synthetic test images (generated)
 
   vllm-edge-inference/
     app.py                              # 271 lines — vLLM sidecar + VLM inference
@@ -285,41 +309,21 @@ plugins/
       ecr-credits-license.txt           # Authors, funding, license
       ecr-project-keywords.txt          # Search keywords
       ecr-project-url.txt               # GitHub URL
-
-  jobs/
-    yolo-counter-job.yaml               # YOLO on W097 (Chicago)
-    bioclip-species-job.yaml            # BioCLIP on W019
-    vllm-scene-job.yaml                 # vLLM on W097
-    combined-ml-pipeline-job.yaml       # All 3 plugins on one node
-
-tests/
-    generate_test_images.py             # 190 lines — synthetic test image generator
-    run-all-tests.sh                    # Discovers and runs all plugin unit tests
-
-  yolo-object-counter/
+    jobs/
+      vllm-scene-job.yaml              # Sample job: deploy on W097 with Qwen3-VL-32B
     tests/
-      test_yolo.py                      # Unit tests (mocked)
-      test_yolo_integration.py          # GPU integration test
-      test_yolo_local.py                # Standalone local test runner
-      test_harness.py                   # Shared test utilities
-      test-images/                      # Real test images (committed)
-      sample-images/                    # Synthetic test images (generated)
-
-  bioclip-species-classifier/
-    tests/
-      test_bioclip.py                   # Unit tests (mocked)
-      test_bioclip_integration.py       # GPU integration test
-      test_bioclip_local.py             # Standalone local test runner
-      test_harness.py                   # Shared test utilities
-      test-images/                      # Real test images (committed)
-      sample-images/                    # Synthetic test images (generated)
-
-  vllm-edge-inference/
-    tests/
+      run-tests.sh                      # Run all tests for this plugin
       test_vllm.py                      # Unit tests (mocked)
       test_vllm_integration.py          # GPU integration test
-      test_harness.py                   # Shared test utilities
+      test_harness.py                   # Pywaggle test harness library
       sample-images/                    # Synthetic test images (generated)
+
+jobs/
+  combined-ml-pipeline-job.yaml         # All 3 plugins on one node
+
+tests/
+  generate_test_images.py               # 190 lines — synthetic test image generator
+  run-all-tests.sh                      # Discovers and runs all plugin unit tests
 ```
 
 ### ECR Submission Readiness

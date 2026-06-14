@@ -57,14 +57,24 @@ bioclip-species-classifier/
 ├── requirements.txt                # Python dependencies
 ├── sage.yaml                       # ECR metadata
 ├── overview.md                     # This file
-└── ecr-meta/                       # ECR submission metadata
-    ├── README                      # Instructions for ECR submission
-    ├── ecr-science-description.md  # Science narrative
-    ├── ecr-credits-license.txt     # Authors, funding, license
-    ├── ecr-project-keywords.txt    # Search keywords
-    └── ecr-project-url.txt         # Project URL
-    (ecr-icon.jpg)                  # 512x512 icon — create before submission
-    (ecr-science-image.jpg)         # 1920x1080 science image — create before submission
+├── ecr-meta/                       # ECR submission metadata
+│   ├── README                      # Instructions for ECR submission
+│   ├── ecr-science-description.md  # Science narrative
+│   ├── ecr-credits-license.txt     # Authors, funding, license
+│   ├── ecr-project-keywords.txt    # Search keywords
+│   └── ecr-project-url.txt         # Project URL
+│   (ecr-icon.jpg)                  # 512x512 icon — create before submission
+│   (ecr-science-image.jpg)         # 1920x1080 science image — create before submission
+├── jobs/                           # Sample Sage job specifications
+│   └── bioclip-species-job.yaml    # Deploy on W019 classifying at Order rank
+└── tests/                          # Self-contained test suite
+    ├── run-tests.sh                # Run all tests for this plugin
+    ├── test_bioclip.py             # Unit test (mocked model, no GPU)
+    ├── test_bioclip_integration.py # Integration test (real model, GPU)
+    ├── test_bioclip_local.py       # Local validation on your own images
+    ├── test_harness.py             # Pywaggle test harness library
+    ├── test-images/                # Test input images
+    └── sample-images/              # Synthetic images for unit tests
 ```
 
 ### What each file does
@@ -420,6 +430,9 @@ docker push registry.sagecontinuum.org/waggle/bioclip-species-classifier:0.1.0
 ```
 
 ### Job YAML Example
+
+A ready-to-use job file is included at `jobs/bioclip-species-job.yaml`.
+Here is the structure:
 
 ```yaml
 name: bioclip-bird-survey

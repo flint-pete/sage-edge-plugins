@@ -49,14 +49,24 @@ yolo-object-counter/
 ├── requirements.txt                # Python dependencies
 ├── sage.yaml                       # ECR metadata — name, version, inputs
 ├── overview.md                     # This file
-└── ecr-meta/                       # ECR submission metadata
-    ├── README                      # Instructions for ECR submission
-    ├── ecr-science-description.md  # Science narrative (displayed on ECR portal)
-    ├── ecr-credits-license.txt     # Authors, funding, license
-    ├── ecr-project-keywords.txt    # Search keywords / ontology terms
-    └── ecr-project-url.txt         # URL to project science page
-    (ecr-icon.jpg)                  # 512x512 icon — create before submission
-    (ecr-science-image.jpg)         # 1920x1080 science image — create before submission
+├── ecr-meta/                       # ECR submission metadata
+│   ├── README                      # Instructions for ECR submission
+│   ├── ecr-science-description.md  # Science narrative (displayed on ECR portal)
+│   ├── ecr-credits-license.txt     # Authors, funding, license
+│   ├── ecr-project-keywords.txt    # Search keywords / ontology terms
+│   └── ecr-project-url.txt         # URL to project science page
+│   (ecr-icon.jpg)                  # 512x512 icon — create before submission
+│   (ecr-science-image.jpg)         # 1920x1080 science image — create before submission
+├── jobs/                           # Sample Sage job specifications
+│   └── yolo-counter-job.yaml       # Deploy on W097 counting people & cars
+└── tests/                          # Self-contained test suite
+    ├── run-tests.sh                # Run all tests for this plugin
+    ├── test_yolo.py                # Unit test (mocked model, no GPU)
+    ├── test_yolo_integration.py    # Integration test (real model, GPU)
+    ├── test_yolo_local.py          # Local validation on your own images
+    ├── test_harness.py             # Pywaggle test harness library
+    ├── test-images/                # Test input images
+    └── sample-images/              # Synthetic images for unit tests
 ```
 
 **What each file does:**
@@ -376,7 +386,7 @@ docker push registry.sagecontinuum.org/waggle/yolo-object-counter:0.1.0
 
 ### Submitting a Job
 
-Create a job YAML (see `../jobs/yolo-counter-job.yaml`):
+Create a job YAML (see `jobs/yolo-counter-job.yaml` for a ready-to-use example):
 
 ```yaml
 name: yolo-bird-counter
