@@ -9,10 +9,12 @@ on DGX Spark / Sage Thor nodes.
 
 Measurement topics:
   env.count.<class_name>   — integer count per detected class
+  env.count.total          — total detections across all classes
   upload                   — annotated JPEG with bounding boxes
 """
 import argparse
 import logging
+import os
 import time
 import tempfile
 
@@ -88,15 +90,70 @@ def draw_boxes(frame: np.ndarray, detections: list[dict]) -> np.ndarray:
     return annotated
 
 
+# ── image sources ────────────────────────────────────────────────────
+
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp"}
+
+
+def iter_image_dir(directory: str):
+    """
+    Yield (image_path, frame_bgr, timestamp_ns) for every image in a
+    directory.  Used for local testing without a live camera.
+    """
+    from pathlib import Path
+
+    dir_path = Path(directory)
+    if not dir_path.is_dir():
+        raise FileNotFoundError(f"Image directory not found: {directory}")
+
+    files = sorted(
+        p for p in dir_path.iterdir()
+        if p.suffix.lower() in IMAGE_EXTENSIONS and p.is_file()
+    )
+    if not files:
+        raise FileNotFoundError(
+            f"No image files found in {directory}. "
+            f"Supported extensions: {', '.join(sorted(IMAGE_EXTENSIONS))}"
+        )
+
+    logger.info("Found %d test images in %s", len(files), directory)
+    for img_path in files:
+        frame = cv2.imread(str(img_path))
+        if frame is None:
+            logger.warning("Skipping unreadable file: %s", img_path.name)
+            continue
+        yield str(img_path), frame, time.time_ns()
+
+
 # ── main loop ───────────────────────────────────────────────────────
 def main():
-    parser = argparse.ArgumentParser(description="YOLO Object Counter for Sage")
+    parser = argparse.ArgumentParser(
+        description="YOLO Object Counter for Sage",
+        epilog="""
+Examples:
+  # Normal mode — capture from camera on a Sage node
+  python3 app.py --stream bottom_camera --classes bird --interval 60
+
+  # Local testing — detect objects in all images in a directory
+  export PYWAGGLE_LOG_DIR=./test-output
+  python3 app.py --image-dir ./test-images --continuous N
+
+  # Local testing — single image via --stream (legacy)
+  python3 app.py --stream /path/to/photo.jpg --continuous N
+
+  # Filter to specific COCO classes
+  python3 app.py --image-dir ./test-images --classes "person,car,truck" --continuous N
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("--stream", default="bottom_camera",
-                        help="Camera stream name or RTSP URL")
+                        help="Camera stream name or RTSP URL (ignored if --image-dir is set)")
+    parser.add_argument("--image-dir", default=None,
+                        help="Directory of test images (replaces camera input for local testing)")
     parser.add_argument("--model", default="yolo11x.pt",
                         help="YOLO model name/path (e.g. yolo11x.pt, yolov8x.pt, yolo11n.pt)")
     parser.add_argument("--interval", type=int, default=30,
-                        help="Seconds between captures")
+                        help="Seconds between captures (camera mode only)")
     parser.add_argument("--conf-thres", type=float, default=0.25,
                         help="Confidence threshold")
     parser.add_argument("--iou-thres", type=float, default=0.45,
@@ -115,15 +172,43 @@ def main():
         logger.info("Filtering to classes: %s", target_classes)
 
     detector = YOLODetector(args.model, args.conf_thres, args.iou_thres)
-    camera = Camera(args.stream)
+
+    # ── Choose image source ──────────────────────────────────────────
+    using_image_dir = args.image_dir is not None
+
+    if using_image_dir:
+        # Local testing mode: read images from a directory
+        image_source = iter_image_dir(args.image_dir)
+        source_label = f"image-dir:{args.image_dir}"
+    else:
+        # Production mode: capture from camera
+        camera = Camera(args.stream)
+        source_label = args.stream
 
     with Plugin() as plugin:
-        logger.info("Plugin started — stream=%s, interval=%ds, model=%s",
-                     args.stream, args.interval, args.model)
+        logger.info("Plugin started — source=%s, interval=%ds, model=%s",
+                     source_label, args.interval, args.model)
+
+        if not using_image_dir:
+            logger.info("Capture interval: %ds", args.interval)
+
         while True:
             try:
-                sample = camera.snapshot()
-                frame = sample.data  # numpy BGR
+                if using_image_dir:
+                    # Get next image from directory iterator
+                    try:
+                        img_path, frame, timestamp = next(image_source)
+                    except StopIteration:
+                        logger.info("All test images processed")
+                        break
+                    source_name = os.path.basename(img_path)
+                    logger.info("Processing: %s (%dx%d)",
+                                source_name, frame.shape[1], frame.shape[0])
+                else:
+                    sample = camera.snapshot()
+                    frame = sample.data  # numpy BGR
+                    timestamp = sample.timestamp
+                    source_name = args.stream
 
                 detections = detector.detect(frame, target_classes)
 
@@ -137,8 +222,8 @@ def main():
                     topic = f"env.count.{cls_name}"
                     plugin.publish(
                         topic, count,
-                        timestamp=sample.timestamp,
-                        meta={"camera": args.stream, "model": args.model},
+                        timestamp=timestamp,
+                        meta={"camera": source_name, "model": args.model},
                     )
                     logger.info("Published %s = %d", topic, count)
 
@@ -146,8 +231,8 @@ def main():
                 plugin.publish(
                     "env.count.total",
                     sum(counts.values()),
-                    timestamp=sample.timestamp,
-                    meta={"camera": args.stream, "model": args.model},
+                    timestamp=timestamp,
+                    meta={"camera": source_name, "model": args.model},
                 )
 
                 # Upload annotated image
@@ -155,8 +240,8 @@ def main():
                     annotated = draw_boxes(frame, detections)
                     tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
                     cv2.imwrite(tmp.name, annotated)
-                    plugin.upload_file(tmp.name, timestamp=sample.timestamp,
-                                       meta={"camera": args.stream,
+                    plugin.upload_file(tmp.name, timestamp=timestamp,
+                                       meta={"camera": source_name,
                                              "detections": str(len(detections))})
                     logger.info("Uploaded annotated image (%d detections)", len(detections))
 
@@ -168,7 +253,8 @@ def main():
 
             if args.continuous != "Y":
                 break
-            time.sleep(args.interval)
+            if not using_image_dir:
+                time.sleep(args.interval)
 
 
 if __name__ == "__main__":

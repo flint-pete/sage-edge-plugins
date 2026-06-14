@@ -199,9 +199,12 @@ positives:
 ## 5. Local Testing (No Node Required)
 
 pywaggle supports local testing by redirecting all publish/upload calls to
-local files.  No Sage node, no Docker, no credentials needed.
+local files.  No Sage node, no Docker, no credentials needed.  There are
+three complementary approaches, from quick smoke-test to full validation.
 
-### Quick Start
+### 5a. Single-Image Quick Test (app.py --stream)
+
+The fastest way to verify the plugin works on a single image:
 
 ```bash
 # 1. Set up a Python virtual environment
@@ -211,12 +214,136 @@ pip install -r requirements.txt
 # 2. Tell pywaggle to write output locally
 export PYWAGGLE_LOG_DIR=./test-output
 
-# 3. Run single-shot against a test image
+# 3. Run single-shot against one test image
 python3 app.py --stream test-image.jpg --continuous N
 
 # 4. Check results
 cat test-output/data.ndjson          # Published measurements (one JSON per line)
 ls test-output/uploads/              # Annotated images
+```
+
+### 5b. Directory Mode (app.py --image-dir)
+
+Process every image in a directory in one run — ideal for batch evaluation
+on a curated set of test photos.  The plugin iterates through all images
+(JPG, PNG, WEBP, BMP) alphabetically, runs inference on each, publishes
+per-class counts and totals, and uploads annotated frames.
+
+```bash
+# Create a directory of test images
+mkdir test-photos
+cp  my-street-photo.jpg  test-photos/
+cp  my-bird-photo.jpg    test-photos/
+
+# Run on every image in the directory
+export PYWAGGLE_LOG_DIR=./test-output
+python3 app.py --image-dir test-photos --continuous N
+
+# Filter to specific classes
+python3 app.py --image-dir test-photos --classes bird,person --continuous N
+
+# Adjust confidence threshold
+python3 app.py --image-dir test-photos --confidence 0.5 --continuous N
+```
+
+Each image is processed exactly once.  The source filename replaces the
+camera name in published metadata, so you can trace which results came
+from which image.  The `--continuous N` flag is implied (directory mode
+always runs once), but it's good practice to pass it explicitly.
+
+### 5c. Local Test Runner (test_yolo_local.py)
+
+The repository includes a standalone local test runner that invokes app.py
+against the committed test images, validates pywaggle output, and prints a
+detailed per-image report.  This is the go-to test for verifying detection
+quality on your own images before deploying to a Sage node.
+
+**Test image directory**: `tests/test-images/yolo/`  
+Images in this directory are committed to the repo and shared across the
+team.  Drop any JPG/PNG/WEBP image here — photos of streets, animals,
+indoor scenes, or anything containing COCO objects.
+
+```bash
+cd Sage-agents
+source tests/.venv/bin/activate
+
+# Default: detect all 80 COCO classes in test-images/yolo/
+python tests/test_yolo_local.py
+
+# Filter to specific classes
+python tests/test_yolo_local.py --classes person,car,bird
+
+# High-confidence only
+python tests/test_yolo_local.py --confidence 0.7
+
+# Verbose — show all plugin log output
+python tests/test_yolo_local.py -v
+```
+
+**What the runner does:**
+1. Discovers all images in `tests/test-images/yolo/`
+2. Invokes `app.py --image-dir ...` with your chosen parameters
+3. Parses the pywaggle `data.ndjson` output
+4. Prints per-image class counts with visual bars
+5. Saves a machine-readable `tests/output/yolo-local/report.json`
+6. Exits 0 on success, 1 on failure (CI-friendly)
+
+**Sample output:**
+
+```
+======================================================================
+  YOLO LOCAL TEST
+======================================================================
+  Test images:  tests/test-images/yolo
+  Image count:  1
+    - test1.jpg  (971 KB)
+  Confidence:   0.25
+  IoU:          0.45
+  Classes:      all (80 COCO classes)
+  Output:       tests/output/yolo-local
+======================================================================
+
+  Image 1: test1.jpg
+    Total detections: 3
+    Classes detected: 2
+      bird                    1  [###############---------------]
+      vase                    2  [##############################]
+    Annotated image:  uploaded ✓
+
+======================================================================
+  SUMMARY
+======================================================================
+  Images processed:    1/1
+  Total detections:    3
+  Unique classes:      2
+  Inference time:      0.45s
+  Annotated uploads:   1
+  NDJSON records:      4
+
+  PASSED — all images detected successfully
+  Report: tests/output/yolo-local/report.json
+======================================================================
+```
+
+### 5d. Test Suite (pytest)
+
+The full test suite includes both unit tests (mocked model, no GPU) and
+integration tests (real model, GPU required):
+
+```bash
+cd Sage-agents
+source tests/.venv/bin/activate
+
+# Unit test — fast, no GPU, mocked YOLO model
+python3 -m pytest tests/test_yolo.py -v
+
+# Integration test — real yolo11x.pt on GPU, uses test images
+# Automatically picks up images from tests/test-images/yolo/ if present,
+# otherwise falls back to synthetic images in tests/sample-images/.
+python3 -m pytest tests/test_yolo_integration.py -v
+
+# Run everything
+bash tests/run-all-tests.sh
 ```
 
 ### What `PYWAGGLE_LOG_DIR` Does
@@ -230,18 +357,9 @@ When this environment variable is set, pywaggle intercepts all
   ```
 - **`uploads/`** — Uploaded files saved as `{timestamp}-{filename}`
 
-### Running the Test Suite
-
-```bash
-cd /path/to/Sage-agents
-source tests/.venv/bin/activate
-
-# Unit test (mocked model, no GPU)
-python3 -m pytest tests/test_yolo.py -v
-
-# Integration test (real model, GPU required)
-python3 -m pytest tests/test_yolo_integration.py -v
-```
+All three testing approaches (single image, directory mode, local runner)
+use this mechanism.  The test runner and integration test set it
+automatically — you only need to export it manually for ad-hoc app.py runs.
 
 ---
 
