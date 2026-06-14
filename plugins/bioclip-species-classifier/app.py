@@ -23,6 +23,7 @@ Measurement topics:
 import argparse
 import json
 import logging
+import os
 import tempfile
 import time
 
@@ -108,18 +109,71 @@ class BioCLIP2Classifier:
         return predictions[:top_k]
 
 
+# ── image sources ────────────────────────────────────────────────────
+
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp"}
+
+
+def iter_image_dir(directory: str):
+    """
+    Yield (image_path, frame_bgr, timestamp_ns) for every image in a
+    directory.  Used for local testing without a live camera.
+    """
+    import glob
+    from pathlib import Path
+
+    dir_path = Path(directory)
+    if not dir_path.is_dir():
+        raise FileNotFoundError(f"Image directory not found: {directory}")
+
+    files = sorted(
+        p for p in dir_path.iterdir()
+        if p.suffix.lower() in IMAGE_EXTENSIONS and p.is_file()
+    )
+    if not files:
+        raise FileNotFoundError(
+            f"No image files found in {directory}. "
+            f"Supported extensions: {', '.join(sorted(IMAGE_EXTENSIONS))}"
+        )
+
+    logger.info("Found %d test images in %s", len(files), directory)
+    for img_path in files:
+        frame = cv2.imread(str(img_path))
+        if frame is None:
+            logger.warning("Skipping unreadable file: %s", img_path.name)
+            continue
+        yield str(img_path), frame, time.time_ns()
+
+
 # ── main loop ───────────────────────────────────────────────────────
 def main():
-    parser = argparse.ArgumentParser(description="BioCLIP2 Species Classifier for Sage")
+    parser = argparse.ArgumentParser(
+        description="BioCLIP2 Species Classifier for Sage",
+        epilog="""
+Examples:
+  # Normal mode — capture from camera on a Sage node
+  python3 app.py --stream bottom_camera --rank Species
+
+  # Local testing — classify all images in a directory
+  export PYWAGGLE_LOG_DIR=./test-output
+  python3 app.py --image-dir ./test-images --rank Species --continuous N
+
+  # Local testing — classify a single image file
+  python3 app.py --image-dir /path/to/single/image.jpg --rank Class --continuous N
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("--stream", default="bottom_camera",
-                        help="Camera stream name or RTSP URL")
+                        help="Camera stream name or RTSP URL (ignored if --image-dir is set)")
+    parser.add_argument("--image-dir", default=None,
+                        help="Directory of test images (replaces camera input for local testing)")
     parser.add_argument("--rank", default="Class",
                         choices=RANK_NAMES,
                         help="Taxonomic rank for classification")
     parser.add_argument("--model", default="hf-hub:imageomics/bioclip-2",
                         help="BioCLIP model string (default: BioCLIP2)")
     parser.add_argument("--interval", type=int, default=60,
-                        help="Seconds between captures")
+                        help="Seconds between captures (camera mode only)")
     parser.add_argument("--min-confidence", type=float, default=0.1,
                         help="Minimum confidence to publish")
     parser.add_argument("--top-k", type=int, default=5,
@@ -132,15 +186,43 @@ def main():
         rank=args.rank,
         model_str=args.model,
     )
-    camera = Camera(args.stream)
+
+    # ── Choose image source ──────────────────────────────────────────
+    using_image_dir = args.image_dir is not None
+
+    if using_image_dir:
+        # Local testing mode: read images from a directory
+        image_source = iter_image_dir(args.image_dir)
+        source_label = f"image-dir:{args.image_dir}"
+    else:
+        # Production mode: capture from camera
+        camera = Camera(args.stream)
+        source_label = args.stream
 
     with Plugin() as plugin:
-        logger.info("Plugin started — stream=%s, rank=%s, model=%s, interval=%ds",
-                     args.stream, args.rank, args.model, args.interval)
+        logger.info("Plugin started — source=%s, rank=%s, model=%s",
+                     source_label, args.rank, args.model)
+
+        if not using_image_dir:
+            logger.info("Capture interval: %ds", args.interval)
+
         while True:
             try:
-                sample = camera.snapshot()
-                frame = sample.data  # numpy BGR
+                if using_image_dir:
+                    # Get next image from directory iterator
+                    try:
+                        img_path, frame, timestamp = next(image_source)
+                    except StopIteration:
+                        logger.info("All test images processed")
+                        break
+                    source_name = os.path.basename(img_path)
+                    logger.info("Processing: %s (%dx%d)",
+                                source_name, frame.shape[1], frame.shape[0])
+                else:
+                    sample = camera.snapshot()
+                    frame = sample.data  # numpy BGR
+                    timestamp = sample.timestamp
+                    source_name = args.stream
 
                 # Convert BGR -> RGB -> PIL
                 pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
@@ -155,23 +237,23 @@ def main():
                     plugin.publish(
                         f"env.species.{rank_lower}",
                         top["name"],
-                        timestamp=sample.timestamp,
-                        meta={"camera": args.stream, "rank": args.rank,
+                        timestamp=timestamp,
+                        meta={"camera": source_name, "rank": args.rank,
                               "model": args.model},
                     )
                     plugin.publish(
                         f"env.species.{rank_lower}.confidence",
                         top["confidence"],
-                        timestamp=sample.timestamp,
-                        meta={"camera": args.stream, "rank": args.rank},
+                        timestamp=timestamp,
+                        meta={"camera": source_name, "rank": args.rank},
                     )
 
                     # Publish top-5 as JSON
                     plugin.publish(
                         f"env.species.top5",
                         json.dumps(predictions),
-                        timestamp=sample.timestamp,
-                        meta={"camera": args.stream, "rank": args.rank},
+                        timestamp=timestamp,
+                        meta={"camera": source_name, "rank": args.rank},
                     )
 
                     logger.info("Top prediction: %s (%.4f)", top["name"], top["confidence"])
@@ -181,8 +263,8 @@ def main():
                     # Upload source image
                     tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
                     cv2.imwrite(tmp.name, frame)
-                    plugin.upload_file(tmp.name, timestamp=sample.timestamp,
-                                       meta={"camera": args.stream,
+                    plugin.upload_file(tmp.name, timestamp=timestamp,
+                                       meta={"camera": source_name,
                                              "top_species": top["name"],
                                              "confidence": str(top["confidence"])})
                 else:
@@ -195,7 +277,8 @@ def main():
 
             if args.continuous != "Y":
                 break
-            time.sleep(args.interval)
+            if not using_image_dir:
+                time.sleep(args.interval)
 
 
 if __name__ == "__main__":

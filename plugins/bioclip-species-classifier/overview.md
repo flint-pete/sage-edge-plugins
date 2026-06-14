@@ -217,29 +217,144 @@ between closely related species.
 
 ## 6. Local Testing (No Node Required)
 
-### Quick Start
+### Directory Structure
+
+Test images live in the project's shared test directory, organized per plugin:
+
+```
+Sage-agents/
+└── tests/
+    ├── test-images/
+    │   └── bioclip/           ← Put your test photos here
+    │       ├── test1.jpg      ← Hummingbird (included)
+    │       ├── my-bird.jpg    ← Add your own
+    │       └── my-insect.png  ← Any JPG/PNG/WEBP/BMP/TIFF
+    ├── test_bioclip_local.py  ← Local test runner (recommended)
+    ├── test_bioclip.py        ← Unit test (mocked model, no GPU)
+    └── test_bioclip_integration.py  ← Integration test (real model, GPU)
+```
+
+### Quick Start — Local Test Runner
+
+The `test_bioclip_local.py` script is the primary tool for evaluating
+BioCLIP2 performance on your own images.  It runs the actual plugin
+(app.py) against every image in `tests/test-images/bioclip/`, validates
+the pywaggle output, and prints a detailed report with per-image
+predictions, confidence bars, and timing.
 
 ```bash
-# 1. Set up environment
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+# 1. Activate the test environment
+cd /path/to/Sage-agents
+source tests/.venv/bin/activate
 
-# 2. Redirect output to local files
-export PYWAGGLE_LOG_DIR=./test-output
+# 2. Add your test images (any number, any supported format)
+cp  field-photo-1.jpg  tests/test-images/bioclip/
+cp  camera-trap.png    tests/test-images/bioclip/
 
-# 3. Run single-shot classification
-python3 app.py --stream test-image.jpg --rank Order --continuous N
+# 3. Run the test — default is Species rank
+python tests/test_bioclip_local.py
+```
 
-# 4. Inspect results
-cat test-output/data.ndjson
+**Expected output:**
+
+```
+======================================================================
+  BioCLIP2 LOCAL TEST
+======================================================================
+  Test images:  tests/test-images/bioclip
+  Image count:  2
+    - field-photo-1.jpg  (512 KB)
+    - test1.jpg  (971 KB)
+  Ranks:        Species
+  ...
+
+  Image 1: field-photo-1.jpg
+    Rank:       Species
+    Prediction: Danaus plexippus
+    Confidence: 0.831422  [#################################-------]
+    Top-5:
+      #1: Danaus plexippus                            0.831422
+      #2: Danaus chrysippus                           0.042100
+      ...
+
+  PASSED — all images classified successfully
+```
+
+### Testing Different Ranks
+
+```bash
+# Classify at Class rank (broad: bird, mammal, insect?)
+python tests/test_bioclip_local.py --rank Class
+
+# Classify at Order rank
+python tests/test_bioclip_local.py --rank Order
+
+# Sweep ALL 7 taxonomic ranks on every image (thorough but slower)
+python tests/test_bioclip_local.py --all-ranks
+```
+
+The `--all-ranks` sweep is useful for understanding how confidence
+degrades from Kingdom (very high) down to Species (lower, because there
+are 450K+ candidates).
+
+### Test Runner Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--rank` | `Species` | Which taxonomic rank to classify at |
+| `--all-ranks` | off | Sweep all 7 ranks (Kingdom through Species) |
+| `--min-confidence` | `0.01` | Minimum confidence to publish (lower = keep more) |
+| `--top-k` | `5` | How many top predictions to show |
+| `--verbose` / `-v` | off | Show full plugin log output |
+
+### Output Files
+
+After a run, results are in `tests/output/bioclip-local/`:
+
+```
+tests/output/bioclip-local/
+├── species/                    ← Per-rank subdirectory
+│   ├── data.ndjson             ← Raw pywaggle measurements
+│   └── uploads/                ← Copies of classified images
+├── class/                      ← (if --all-ranks was used)
+│   └── ...
+└── report.json                 ← Machine-readable summary of all results
+```
+
+The `data.ndjson` file contains the exact same records the plugin would
+publish on a real Sage node — you can inspect these to verify the data
+format matches what downstream analysis expects.
+
+### Running the Plugin Directly
+
+You can also run app.py directly against the test image directory.
+This is useful for debugging or testing custom flags:
+
+```bash
+# Redirect waggle output to a local directory
+export PYWAGGLE_LOG_DIR=./my-test-output
+
+# Run single-shot against the test images
+python plugins/bioclip-species-classifier/app.py \
+    --image-dir tests/test-images/bioclip \
+    --rank Species \
+    --continuous N \
+    --top-k 5
+
+# Inspect the raw output
+cat my-test-output/data.ndjson
+ls  my-test-output/uploads/
 ```
 
 ### What the Output Looks Like
 
+Each image produces 3 measurements + 1 upload:
+
 ```json
-{"timestamp":"...","name":"env.species.order","value":"Passeriformes","meta":{"rank":"Order","model":"bioclip-2"}}
-{"timestamp":"...","name":"env.species.order.confidence","value":0.734,"meta":{"rank":"Order","model":"bioclip-2"}}
-{"timestamp":"...","name":"env.species.top5","value":"[{\"name\":\"Passeriformes\",\"confidence\":0.734},...]","meta":{}}
+{"name":"env.species.species","value":"Archilochus colubris","meta":{"camera":"test1.jpg","rank":"Species","model":"hf-hub:imageomics/bioclip-2"}}
+{"name":"env.species.species.confidence","value":0.9797,"meta":{"camera":"test1.jpg","rank":"Species"}}
+{"name":"env.species.top5","value":"[{\"name\":\"Archilochus colubris\",\"confidence\":0.9797},...]","meta":{"camera":"test1.jpg","rank":"Species"}}
+{"name":"upload","value":"/path/to/uploads/...-tmp.jpg","meta":{"top_species":"Archilochus colubris","confidence":"0.9797"}}
 ```
 
 ### Running the Test Suite
@@ -251,19 +366,30 @@ source tests/.venv/bin/activate
 # Unit test (no GPU needed, uses mocked model)
 python3 -m pytest tests/test_bioclip.py -v
 
-# Integration test (GPU required, downloads real model)
+# Integration test (GPU required, downloads real BioCLIP2 model)
+#   Automatically uses real images from tests/test-images/bioclip/ if available,
+#   otherwise falls back to synthetic sample images.
 python3 -m pytest tests/test_bioclip_integration.py -v
+
+# Run all tests
+bash tests/run-all-tests.sh
 ```
 
-### Testing Different Ranks
+### Adding Good Test Images
 
-```bash
-# Test at Species rank (slow, needs ~45 seconds for text embeddings)
-python3 app.py --stream bird-photo.jpg --rank Species --continuous N
+For best results, include a diverse set of images:
 
-# Test at Kingdom rank (fast)
-python3 app.py --stream mushroom.jpg --rank Kingdom --continuous N
-```
+1. **Known species** — photos where you already know the answer, so you
+   can verify BioCLIP2's identification.  iNaturalist is a good source.
+2. **Different taxa** — birds, insects, plants, mammals, fungi — to test
+   breadth across the TreeOfLife.
+3. **Varying quality** — clear close-ups AND distant/blurry shots, to
+   understand where accuracy breaks down.
+4. **Edge cases** — night/IR images, multiple organisms in frame,
+   human-made objects that look biological.
+
+Images should be standard photo formats (JPG preferred) and can be any
+resolution — BioCLIP2 resizes to 224x224 internally.
 
 ---
 

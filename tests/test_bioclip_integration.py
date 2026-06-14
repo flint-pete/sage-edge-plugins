@@ -32,7 +32,25 @@ from waggle.plugin import Plugin
 
 # ── paths ────────────────────────────────────────────────────────────
 SAMPLE_DIR = os.path.join(os.path.dirname(__file__), "sample-images")
-IMAGES = ["urban_street.jpg", "wildlife.jpg", "sky_clouds.jpg"]
+TEST_IMAGE_DIR = os.path.join(os.path.dirname(__file__), "test-images", "bioclip")
+
+# Use real test images if available, fall back to synthetic sample-images
+if os.path.isdir(TEST_IMAGE_DIR):
+    _test_imgs = sorted(
+        f for f in os.listdir(TEST_IMAGE_DIR)
+        if os.path.splitext(f)[1].lower() in {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+    )
+else:
+    _test_imgs = []
+
+if _test_imgs:
+    IMAGE_DIR = TEST_IMAGE_DIR
+    IMAGES = _test_imgs
+    print(f"Using {len(IMAGES)} real test image(s) from {TEST_IMAGE_DIR}")
+else:
+    IMAGE_DIR = SAMPLE_DIR
+    IMAGES = ["urban_street.jpg", "wildlife.jpg", "sky_clouds.jpg"]
+    print(f"No real test images in {TEST_IMAGE_DIR}, using synthetic samples")
 
 MODEL_STR = "hf-hub:imageomics/bioclip-2"
 RANKS_TO_TEST = ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"]
@@ -72,7 +90,7 @@ def main():
     all_results = []
 
     for img_name in IMAGES:
-        img_path = os.path.join(SAMPLE_DIR, img_name)
+        img_path = os.path.join(IMAGE_DIR, img_name)
         if not os.path.exists(img_path):
             print(f"  SKIP {img_name} — not found")
             continue
@@ -130,7 +148,7 @@ def main():
     with Plugin() as plugin:
         for result in all_results:
             img_name = result["image"]
-            img_path = os.path.join(SAMPLE_DIR, img_name)
+            img_path = os.path.join(IMAGE_DIR, img_name)
             frame = cv2.imread(img_path)
             ts = time.time_ns()
 
