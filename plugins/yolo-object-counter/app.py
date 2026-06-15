@@ -219,7 +219,9 @@ Examples:
 
                 # Publish counts
                 for cls_name, count in counts.items():
-                    topic = f"env.count.{cls_name}"
+                    # Sanitize class name for pywaggle topic (a-z0-9_ only)
+                    safe_name = cls_name.replace(" ", "_").replace("-", "_")
+                    topic = f"env.count.{safe_name}"
                     plugin.publish(
                         topic, count,
                         timestamp=timestamp,
