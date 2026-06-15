@@ -219,6 +219,9 @@ examples:
                         help="IoU threshold for NMS (default: 0.45)")
     parser.add_argument("--verbose", "-v", action="store_true",
                         help="Show plugin log output")
+    parser.add_argument("--add-no-detect-text", action="store_true",
+                        help="For images with no detections, save a copy with "
+                             "'detected no objects' text to the uploads directory")
     args = parser.parse_args()
 
     # ── Preflight checks ─────────────────────────────────────────────
@@ -276,6 +279,39 @@ examples:
 
     records = parse_ndjson(OUTPUT_DIR)
     results = extract_results(records)
+
+    # ── Generate "no detection" images if requested ───────────────
+    if args.add_no_detect_text:
+        import cv2
+        detected_images = {r["image"] for r in results}
+        uploads_dir = OUTPUT_DIR / "uploads"
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+        no_detect_count = 0
+        for img in images:
+            if img.name not in detected_images:
+                frame = cv2.imread(str(img))
+                if frame is None:
+                    continue
+                h, w = frame.shape[:2]
+                text = "detected no objects"
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                # Scale font relative to image width (~12pt feel at 1000px)
+                scale = max(0.5, w / 1000.0)
+                thickness = max(1, int(scale * 2))
+                (tw, th), baseline = cv2.getTextSize(text, font, scale, thickness)
+                x = 10
+                y = h - 10 - baseline
+                # Dark background for readability
+                cv2.rectangle(frame, (x - 4, y - th - 4),
+                              (x + tw + 4, y + baseline + 4), (0, 0, 0), -1)
+                cv2.putText(frame, text, (x, y), font, scale,
+                            (0, 255, 0), thickness)
+                stem = img.stem
+                out_path = uploads_dir / f"{stem}-no-detections.jpg"
+                cv2.imwrite(str(out_path), frame)
+                no_detect_count += 1
+        if no_detect_count:
+            print(f"\n  Added 'detected no objects' text to {no_detect_count} images")
 
     overall_pass = True
     if not results:
