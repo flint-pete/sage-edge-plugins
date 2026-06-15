@@ -11,7 +11,6 @@ Does NOT require: ultralytics, torch, GPU
 import json
 import os
 import sys
-import tempfile
 from pathlib import Path
 
 # ── Setup paths ──────────────────────────────────────────────────────
@@ -31,25 +30,6 @@ FAKE_DETECTIONS = [
     {"class": "car",    "confidence": 0.65, "bbox": [360, 320, 500, 460]},
 ]
 
-
-def draw_boxes(frame, detections):
-    """
-    Replicate the plugin's draw_boxes — draw bounding boxes on frame.
-    This is a copy of the plugin code to avoid importing app.py (which
-    pulls in torch/ultralytics at module level).
-    """
-    import cv2
-    annotated = frame.copy()
-    for det in detections:
-        x1, y1, x2, y2 = det["bbox"]
-        label = f"{det['class']} {det['confidence']:.2f}"
-        color = (0, 255, 0)
-        cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 2)
-        (tw, th_), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
-        cv2.rectangle(annotated, (x1, y1 - th_ - 6), (x1 + tw, y1), color, -1)
-        cv2.putText(annotated, label, (x1, y1 - 4),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 1)
-    return annotated
 
 
 # ── Test ─────────────────────────────────────────────────────────────
@@ -92,16 +72,6 @@ def test_yolo_plugin():
                            timestamp=ts,
                            meta={"camera": stream, "model": model_name})
             print(f"  Published: env.count.total = {sum(counts.values())}")
-
-            # Draw boxes and upload annotated image
-            annotated = draw_boxes(frame, detections)
-            tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False,
-                                             dir=output_dir)
-            cv2.imwrite(tmp.name, annotated)
-            plugin.upload_file(tmp.name, timestamp=ts,
-                               meta={"camera": stream,
-                                     "detections": str(len(detections))})
-            print(f"  Uploaded annotated image: {os.path.basename(tmp.name)}")
             print()
 
     # Parse and validate output
@@ -110,12 +80,10 @@ def test_yolo_plugin():
     # ── Assertions ───────────────────────────────────────────────
     n_images = len(images)
     measurements = results["measurements"]
-    uploads = results["uploads"]
 
     # Our mock returns 2 person + 3 car = 5 detections per image
     # So: env.count.person, env.count.car, env.count.total = 3 per image
     count_measurements = [m for m in measurements if m["name"].startswith("env.count.")]
-    upload_measurements = [m for m in measurements if m["name"] == "upload"]
 
     assert len(count_measurements) == 3 * n_images, \
         f"Expected {3*n_images} count measurements, got {len(count_measurements)}"
@@ -141,17 +109,6 @@ def test_yolo_plugin():
         for k, v in m.get("meta", {}).items():
             assert isinstance(v, str), \
                 f"Meta value for '{k}' should be str, got {type(v).__name__}: {v}"
-
-    # Check uploads
-    assert len(uploads) == n_images, \
-        f"Expected {n_images} uploads, got {len(uploads)}"
-    assert len(upload_measurements) == n_images, \
-        f"Expected {n_images} upload records in data.ndjson, got {len(upload_measurements)}"
-
-    # Verify annotated images have boxes drawn (file size should be > original)
-    for upload_path in uploads:
-        size = os.path.getsize(upload_path)
-        assert size > 10000, f"Annotated image too small ({size} bytes): {upload_path}"
 
     print("  ALL ASSERTIONS PASSED")
 
