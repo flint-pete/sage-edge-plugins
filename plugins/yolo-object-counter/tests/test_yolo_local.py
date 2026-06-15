@@ -219,9 +219,12 @@ examples:
                         help="IoU threshold for NMS (default: 0.45)")
     parser.add_argument("--verbose", "-v", action="store_true",
                         help="Show plugin log output")
-    parser.add_argument("--add-no-detect-text", action="store_true",
+    parser.add_argument("--add-no-detect-text", action="store_true", default=True,
                         help="For images with no detections, save a copy with "
-                             "'detected no objects' text to the uploads directory")
+                             "'detected no objects' text to the uploads directory "
+                             "(default: on, use --no-add-no-detect-text to disable)")
+    parser.add_argument("--no-add-no-detect-text", action="store_false",
+                        dest="add_no_detect_text")
     args = parser.parse_args()
 
     # ── Preflight checks ─────────────────────────────────────────────
