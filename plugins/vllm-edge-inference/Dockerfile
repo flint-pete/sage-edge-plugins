@@ -1,5 +1,5 @@
 # vLLM Edge Inference — Sage/Waggle edge plugin
-# Two-stage build: vLLM server + plugin application
+# Single-stage build: vLLM server + plugin application
 # Target: Sage Thor nodes (128 GB unified memory, Blackwell GPU)
 FROM nvcr.io/nvidia/pytorch:24.06-py3
 

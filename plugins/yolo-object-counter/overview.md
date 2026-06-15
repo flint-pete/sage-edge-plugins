@@ -44,7 +44,7 @@ instead of raw frames.
 
 ```
 yolo-object-counter/
-├── app.py                          # Main application (175 lines)
+├── app.py                          # Main application (~260 lines)
 ├── Dockerfile                      # Container build instructions
 ├── requirements.txt                # Python dependencies
 ├── sage.yaml                       # ECR metadata — name, version, inputs
@@ -109,7 +109,7 @@ yolo-object-counter/
 │    └── Returns list of {class, confidence, bbox}    │
 │                                                     │
 │ 3. Count detections per class                       │
-│    └── collections.Counter on class names            │
+│    └── dict accumulation on class names            │
 │                                                     │
 │ 4. plugin.publish() for each class                  │
 │    └── "env.count.person" → 3                       │
@@ -253,7 +253,7 @@ python3 app.py --image-dir test-photos --continuous N
 python3 app.py --image-dir test-photos --classes bird,person --continuous N
 
 # Adjust confidence threshold
-python3 app.py --image-dir test-photos --confidence 0.5 --continuous N
+python3 app.py --image-dir test-photos --conf-thres 0.5 --continuous N
 ```
 
 Each image is processed exactly once.  The source filename replaces the
@@ -438,9 +438,9 @@ pluginctl logs test-yolo
 Every inference cycle publishes these measurements:
 
 ```
-env.count.person     → 3      meta: {model: "yolo11x.pt", camera: "bottom_camera", conf_thres: "0.25"}
-env.count.car        → 2      meta: {model: "yolo11x.pt", camera: "bottom_camera", conf_thres: "0.25"}
-env.count.total      → 5      meta: {model: "yolo11x.pt", camera: "bottom_camera", conf_thres: "0.25"}
+env.count.person     → 3      meta: {model: "yolo11x.pt", camera: "bottom_camera"}
+env.count.car        → 2      meta: {model: "yolo11x.pt", camera: "bottom_camera"}
+env.count.total      → 5      meta: {model: "yolo11x.pt", camera: "bottom_camera"}
 ```
 
 Plus one uploaded JPEG (if `--upload-image Y`): the original frame with
@@ -508,7 +508,7 @@ pywaggle's `valid_meta()` enforces `isinstance(v, str)` on every meta value.
 
 ### Model Download on First Run
 
-YOLO models are downloaded from Ultralytics on first use (~110 MB for
+YOLO models are downloaded from Ultralytics on first use (~130 MB for
 yolo11x.pt).  On edge nodes without internet, the model must be baked into
 the Docker image at build time (see the Dockerfile `RUN` download line).
 
@@ -526,8 +526,9 @@ like `yolo11n.pt`.
 
 ### OpenCV and Headless Mode
 
-The Dockerfile installs `opencv-python` (not `opencv-python-headless`).
-If you see `libGL` errors, switch to `opencv-python-headless` in
+The plugin uses `opencv-python-headless` (no GUI dependencies) which is
+the correct choice for headless edge nodes.  If you need GUI functions
+like `cv2.imshow()` for local debugging, switch to `opencv-python` in
 `requirements.txt`.
 
 ### NMS and Overlapping Detections

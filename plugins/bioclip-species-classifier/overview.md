@@ -52,7 +52,7 @@ for verification.
 
 ```
 bioclip-species-classifier/
-├── app.py                          # Main application (202 lines)
+├── app.py                          # Main application (~285 lines)
 ├── Dockerfile                      # Container build — downloads model at build time
 ├── requirements.txt                # Python dependencies
 ├── sage.yaml                       # ECR metadata
@@ -82,7 +82,7 @@ bioclip-species-classifier/
 | File | Purpose |
 |------|---------|
 | `app.py` | Model loading, camera capture, classification, publishing |
-| `Dockerfile` | Two-stage build: installs deps, pre-downloads BioCLIP2 model + runs warmup |
+| `Dockerfile` | Single-stage build: installs deps, pre-downloads BioCLIP2 model + runs warmup |
 | `requirements.txt` | pywaggle, pybioclip, torch, opencv-python-headless, pillow |
 | `sage.yaml` | Plugin name, version, inputs (with descriptions), ontology |
 | `ecr-meta/` | Portal display metadata: science description, keywords, credits |
@@ -408,21 +408,28 @@ resolution — BioCLIP2 resizes to 224x224 internally.
 
 ### Docker Build
 
-The Dockerfile has an important multi-stage design:
+The Dockerfile uses a single-stage build with careful layer ordering:
 
 ```dockerfile
-# Stage 1: Download model weights at build time
-RUN python3 -c "from bioclip.predict import TreeOfLifeClassifier; \
-    TreeOfLifeClassifier(model_str='hf-hub:imageomics/bioclip-2')"
+# Pre-download model weights AND run warmup inference (single layer)
+# Placed BEFORE COPY app.py so code edits don't invalidate the
+# expensive (~2 GB) model + embeddings download cache layer
+RUN python -c "\
+from bioclip.predict import TreeOfLifeClassifier; \
+c = TreeOfLifeClassifier(model_str='hf-hub:imageomics/bioclip-2'); \
+from bioclip import Rank; \
+from PIL import Image; import numpy as np; \
+dummy = Image.fromarray(np.zeros((224,224,3), dtype=np.uint8)); \
+c.predict([dummy], rank=Rank.CLASS, k=1)"
 
-# Stage 2: Run a warmup inference to pre-compile kernels
-RUN python3 -c "from PIL import Image; from bioclip.predict import ...; \
-    classifier.predict(images=[Image.new('RGB',(224,224))], rank=Rank.CLASS, k=1)"
+COPY app.py .
 ```
 
 **Why download at build time?** Edge nodes may have no internet access.
 The model must be baked into the container image.  The warmup step
 pre-compiles CUDA kernels, reducing first-inference latency from ~45s to ~3s.
+The model download is placed *before* `COPY app.py` so that code-only
+changes don't invalidate the expensive download layer.
 
 ```bash
 docker build -t registry.sagecontinuum.org/waggle/bioclip-species-classifier:0.1.0 .

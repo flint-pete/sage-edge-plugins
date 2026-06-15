@@ -59,7 +59,7 @@ Source JPEG images are uploaded each cycle for downstream verification.
   to classify bird families visiting throughout the day.
 - **Invasive species detection** — `--rank Species --min-confidence 0.3`
   to flag potential invasive species for rapid response.
-- **Pollinator surveys** — `--rank Family --classes Insecta` on cameras
-  positioned near flowering plants.
+- **Pollinator surveys** — `--rank Family` on cameras
+  positioned near flowering plants to classify insect visitors.
 - **Marine biodiversity** — deploy on underwater camera nodes to classify
   fish and invertebrate species at coral reef monitoring sites.

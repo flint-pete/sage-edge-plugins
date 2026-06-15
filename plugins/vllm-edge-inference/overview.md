@@ -57,7 +57,7 @@ while fitting within the Thor/DGX Spark memory envelope.
 
 ```
 vllm-edge-inference/
-├── app.py                          # Main application (271 lines)
+├── app.py                          # Main application (~280 lines)
 ├── Dockerfile                      # Container build — downloads 67GB model at build time
 ├── requirements.txt                # Python dependencies
 ├── sage.yaml                       # ECR metadata
@@ -87,7 +87,7 @@ vllm-edge-inference/
 | `app.py` | VLLMClient class, server launcher, camera capture, publishing |
 | `Dockerfile` | Based on nvidia/pytorch, installs vLLM, pre-downloads Qwen3-VL-32B |
 | `requirements.txt` | pywaggle, vllm, requests, opencv-python-headless, pillow |
-| `sage.yaml` | Plugin name, version, 14 configurable inputs with descriptions |
+| `sage.yaml` | Plugin name, version, 15 configurable inputs with descriptions |
 | `ecr-meta/` | Portal display metadata: science description, keywords, credits |
 
 ---
@@ -100,7 +100,7 @@ and the vLLM server process (sidecar).  They communicate over localhost HTTP.
 ### Startup Sequence
 
 ```
-1. Parse command-line arguments (14 flags)
+1. Parse command-line arguments (15 flags)
 2. Determine vLLM URL:
    ├── If --vllm-url provided → use external server (skip launch)
    └── Else → launch_vllm_server() as a subprocess
@@ -166,7 +166,7 @@ and the vLLM server process (sidecar).  They communicate over localhost HTTP.
 **`launch_vllm_server()`** (lines 115–139)
 - Spawns vLLM's OpenAI-compatible server via `subprocess.Popen`
 - Constructs the full CLI command from function arguments
-- Routes stdout to DEVNULL, stderr to PIPE
+- Routes stdout and stderr to DEVNULL
 - Returns immediately — the caller must `wait_for_ready()`
 
 ### The OpenAI-Compatible API
@@ -403,16 +403,19 @@ PyTorch container with CUDA pre-installed):
 FROM nvcr.io/nvidia/pytorch:24.06-py3
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY app.py .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Pre-download Qwen3-VL-32B-Instruct (~67 GB)
+# Placed BEFORE COPY app.py so code edits don't invalidate
+# the expensive model download layer
 RUN mkdir -p /hf_cache && \
     HF_HOME=/hf_cache huggingface-cli download \
     Qwen/Qwen3-VL-32B-Instruct \
     --cache-dir /hf_cache --resume
 
 ENV HF_HOME=/hf_cache
+COPY app.py .
 ENTRYPOINT ["python", "/app/app.py"]
 ```
 
@@ -560,12 +563,13 @@ The first inference after model load triggers Triton kernel compilation
 (~113 seconds on DGX Spark).  Subsequent inferences are fast (~26 seconds
 for a detailed description).  This is a one-time cost per server restart.
 
-### stdout PIPE Deadlock
+### stdout/stderr PIPE Deadlock Risk
 
-If the vLLM subprocess writes to a stdout PIPE that nobody reads, the
-pipe buffer fills (64 KB) and the process hangs.  The current code routes
-stdout to DEVNULL and stderr to PIPE.  If you modify the launcher, be
-aware of this — always drain pipes or redirect to files/DEVNULL.
+If the vLLM subprocess writes to a PIPE that nobody reads, the pipe
+buffer fills (64 KB) and the process hangs.  The current code routes
+both stdout and stderr to DEVNULL, avoiding this risk.  If you modify
+the launcher to capture output via PIPE, be sure to drain it — or
+redirect to a log file instead.
 
 ### Image Encoding Overhead
 

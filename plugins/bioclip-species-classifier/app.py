@@ -119,7 +119,6 @@ def iter_image_dir(directory: str):
     Yield (image_path, frame_bgr, timestamp_ns) for every image in a
     directory.  Used for local testing without a live camera.
     """
-    import glob
     from pathlib import Path
 
     dir_path = Path(directory)
@@ -267,6 +266,7 @@ Examples:
                                        meta={"camera": source_name,
                                              "top_species": top["name"],
                                              "confidence": str(top["confidence"])})
+                    os.unlink(tmp.name)
                 else:
                     logger.info("No confident prediction (top=%.4f, threshold=%.2f)",
                                 predictions[0]["confidence"] if predictions else 0,

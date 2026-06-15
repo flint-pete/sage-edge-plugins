@@ -132,11 +132,12 @@ def launch_vllm_server(model: str, port: int, gpu_mem_frac: float,
     if enforce_eager:
         cmd.append("--enforce-eager")
     logger.info("Launching vLLM: %s", " ".join(cmd))
-    subprocess.Popen(
+    proc = subprocess.Popen(
         cmd,
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
     )
+    return proc
 
 
 # ── main loop ───────────────────────────────────────────────────────
@@ -192,11 +193,12 @@ def main():
     args = parser.parse_args()
 
     # Determine vLLM URL — either user-provided or auto-launch
+    vllm_proc = None
     if args.vllm_url:
         base_url = args.vllm_url
     else:
         base_url = f"http://localhost:{args.vllm_port}"
-        launch_vllm_server(
+        vllm_proc = launch_vllm_server(
             model=args.model,
             port=args.vllm_port,
             gpu_mem_frac=args.gpu_mem_frac,
@@ -217,54 +219,61 @@ def main():
 
     camera = Camera(args.stream)
 
-    with Plugin() as plugin:
-        logger.info("Plugin started — stream=%s, model=%s, interval=%ds",
-                     args.stream, args.model, args.interval)
-        while True:
-            try:
-                sample = camera.snapshot()
-                frame = sample.data  # numpy BGR
+    try:
+        with Plugin() as plugin:
+            logger.info("Plugin started — stream=%s, model=%s, interval=%ds",
+                         args.stream, args.model, args.interval)
+            while True:
+                try:
+                    sample = camera.snapshot()
+                    frame = sample.data  # numpy BGR
 
-                pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                    pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
 
-                # Get detailed description
-                description = client.describe_image(pil_image, args.prompt)
-                plugin.publish(
-                    "env.scene.description",
-                    description,
-                    timestamp=sample.timestamp,
-                    meta={"camera": args.stream, "model": args.model},
-                )
-                logger.info("Description: %s", description[:120])
+                    # Get detailed description
+                    description = client.describe_image(pil_image, args.prompt)
+                    plugin.publish(
+                        "env.scene.description",
+                        description,
+                        timestamp=sample.timestamp,
+                        meta={"camera": args.stream, "model": args.model},
+                    )
+                    logger.info("Description: %s", description[:120])
 
-                # Get short summary
-                summary = client.describe_image(pil_image, args.summary_prompt)
-                plugin.publish(
-                    "env.scene.summary",
-                    summary,
-                    timestamp=sample.timestamp,
-                    meta={"camera": args.stream, "model": args.model},
-                )
-                logger.info("Summary: %s", summary)
+                    # Get short summary
+                    summary = client.describe_image(pil_image, args.summary_prompt)
+                    plugin.publish(
+                        "env.scene.summary",
+                        summary,
+                        timestamp=sample.timestamp,
+                        meta={"camera": args.stream, "model": args.model},
+                    )
+                    logger.info("Summary: %s", summary)
 
-                # Upload source image
-                if args.upload_image == "Y":
-                    tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
-                    cv2.imwrite(tmp.name, frame)
-                    plugin.upload_file(tmp.name, timestamp=sample.timestamp,
-                                       meta={"camera": args.stream,
-                                             "description": description[:200]})
+                    # Upload source image
+                    if args.upload_image == "Y":
+                        tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+                        cv2.imwrite(tmp.name, frame)
+                        plugin.upload_file(tmp.name, timestamp=sample.timestamp,
+                                           meta={"camera": args.stream,
+                                                 "description": description[:200]})
+                        os.unlink(tmp.name)
 
-            except requests.exceptions.ConnectionError:
-                logger.warning("vLLM server connection lost — retrying in 30s")
-                time.sleep(30)
-                continue
-            except Exception:
-                logger.exception("Inference error")
+                except requests.exceptions.ConnectionError:
+                    logger.warning("vLLM server connection lost — retrying in 30s")
+                    time.sleep(30)
+                    continue
+                except Exception:
+                    logger.exception("Inference error")
 
-            if args.continuous != "Y":
-                break
-            time.sleep(args.interval)
+                if args.continuous != "Y":
+                    break
+                time.sleep(args.interval)
+    finally:
+        if vllm_proc is not None:
+            logger.info("Terminating vLLM server (pid=%d)", vllm_proc.pid)
+            vllm_proc.terminate()
+            vllm_proc.wait(timeout=30)
 
 
 if __name__ == "__main__":

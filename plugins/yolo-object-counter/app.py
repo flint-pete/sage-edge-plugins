@@ -21,7 +21,6 @@ import tempfile
 import cv2
 import numpy as np
 import torch
-from PIL import Image
 from ultralytics import YOLO
 
 from waggle.plugin import Plugin
@@ -243,6 +242,7 @@ Examples:
                     plugin.upload_file(tmp.name, timestamp=timestamp,
                                        meta={"camera": source_name,
                                              "detections": str(len(detections))})
+                    os.unlink(tmp.name)
                     logger.info("Uploaded annotated image (%d detections)", len(detections))
 
                 if not detections:
