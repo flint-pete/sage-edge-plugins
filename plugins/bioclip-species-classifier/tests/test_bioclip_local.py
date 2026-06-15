@@ -62,7 +62,8 @@ def count_images(directory: Path) -> list[Path]:
     """Find all image files in a directory."""
     exts = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp"}
     return sorted(p for p in directory.iterdir()
-                  if p.suffix.lower() in exts and p.is_file())
+                  if p.suffix.lower() in exts and p.is_file()
+                  and not p.name.startswith("."))
 
 
 def run_bioclip(rank: str, min_confidence: float, top_k: int,

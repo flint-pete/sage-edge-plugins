@@ -128,6 +128,7 @@ def iter_image_dir(directory: str):
     files = sorted(
         p for p in dir_path.iterdir()
         if p.suffix.lower() in IMAGE_EXTENSIONS and p.is_file()
+        and not p.name.startswith(".")
     )
     if not files:
         raise FileNotFoundError(
@@ -275,7 +276,7 @@ Examples:
             except Exception:
                 logger.exception("Classification error")
 
-            if args.continuous != "Y":
+            if args.continuous != "Y" and not using_image_dir:
                 break
             if not using_image_dir:
                 time.sleep(args.interval)
