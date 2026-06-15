@@ -178,13 +178,12 @@ def test_vllm_plugin():
     print("  ALL ASSERTIONS PASSED")
 
     th.print_report(results, "vLLM Edge Inference")
-    return True
 
 
 if __name__ == "__main__":
     try:
-        ok = test_vllm_plugin()
-        sys.exit(0 if ok else 1)
+        test_vllm_plugin()
+        sys.exit(0)
     except Exception as e:
         print(f"\nTEST FAILED: {e}", file=sys.stderr)
         import traceback

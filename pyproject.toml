@@ -3,4 +3,4 @@
 # module name collisions when multiple plugins have test_harness.py.
 
 [tool.pytest.ini_options]
-import_mode = "importlib"
+addopts = "--import-mode=importlib"

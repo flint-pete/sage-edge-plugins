@@ -173,13 +173,12 @@ def test_bioclip_plugin():
     print("  ALL ASSERTIONS PASSED")
 
     th.print_report(results, "BioCLIP Species Classifier")
-    return True
 
 
 if __name__ == "__main__":
     try:
-        ok = test_bioclip_plugin()
-        sys.exit(0 if ok else 1)
+        test_bioclip_plugin()
+        sys.exit(0)
     except Exception as e:
         print(f"\nTEST FAILED: {e}", file=sys.stderr)
         import traceback
