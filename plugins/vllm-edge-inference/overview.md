@@ -77,7 +77,7 @@ vllm-edge-inference/
     ├── test_vllm.py                # Unit test (mocked model, no GPU)
     ├── test_vllm_integration.py    # Integration test (real model, GPU)
     ├── test_harness.py             # Pywaggle test harness library
-    └── sample-images/              # Synthetic images for unit tests
+    └── test-images/                # Test images (committed)
 ```
 
 ### What each file does

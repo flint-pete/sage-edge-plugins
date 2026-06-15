@@ -3,7 +3,7 @@
 BioCLIP2 Local Test Runner — Classify real images from a test directory.
 
 Runs the actual BioCLIP2 plugin (app.py) against every image in
-tests/test-images/bioclip/, validates the pywaggle output, and prints
+tests/test-images/, validates the pywaggle output, and prints
 a detailed report with per-image species predictions and timing.
 
 This is the go-to test for checking whether BioCLIP2 is performing well
@@ -15,8 +15,8 @@ Setup:
 
     # Add your test images — any JPG/PNG/WEBP photos of animals, plants,
     # insects, birds, etc.  The more diverse, the better the test.
-    cp  my-bird-photo.jpg    tests/test-images/bioclip/
-    cp  my-insect-photo.png  tests/test-images/bioclip/
+    cp  my-bird-photo.jpg    tests/test-images/
+    cp  my-insect-photo.png  tests/test-images/
 
 Usage:
     # Default: classify at Species rank

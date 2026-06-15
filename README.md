@@ -271,8 +271,7 @@ plugins/
       test_yolo_integration.py          # GPU integration test
       test_yolo_local.py                # Standalone local test runner
       test_harness.py                   # Pywaggle test harness library
-      test-images/                      # Real test images (committed)
-      sample-images/                    # Synthetic test images (generated)
+      test-images/                      # Test images (committed)
 
   bioclip-species-classifier/
     app.py                              # 202 lines — BioCLIP-2 classification
@@ -294,8 +293,7 @@ plugins/
       test_bioclip_integration.py       # GPU integration test
       test_bioclip_local.py             # Standalone local test runner
       test_harness.py                   # Pywaggle test harness library
-      test-images/                      # Real test images (committed)
-      sample-images/                    # Synthetic test images (generated)
+      test-images/                      # Test images (committed)
 
   vllm-edge-inference/
     app.py                              # 271 lines — vLLM sidecar + VLM inference
@@ -316,13 +314,12 @@ plugins/
       test_vllm.py                      # Unit tests (mocked)
       test_vllm_integration.py          # GPU integration test
       test_harness.py                   # Pywaggle test harness library
-      sample-images/                    # Synthetic test images (generated)
+      test-images/                      # Test images (committed)
 
 jobs/
   combined-ml-pipeline-job.yaml         # All 3 plugins on one node
 
 tests/
-  generate_test_images.py               # 190 lines — synthetic test image generator
   run-all-tests.sh                      # Discovers and runs all plugin unit tests
 ```
 

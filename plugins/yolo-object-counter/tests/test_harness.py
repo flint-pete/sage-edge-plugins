@@ -26,52 +26,37 @@ from pathlib import Path
 # Resolve project paths
 TESTS_DIR = Path(__file__).parent
 PROJECT_DIR = TESTS_DIR.parent
-SAMPLE_IMAGES_DIR = TESTS_DIR / "sample-images"
 TEST_IMAGES_DIR = TESTS_DIR / "test-images"
 OUTPUT_DIR = TESTS_DIR / "output"
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp"}
 
 
-def get_sample_images() -> list[str]:
-    """Return sorted list of synthetic sample image paths (for unit tests)."""
-    images = sorted(SAMPLE_IMAGES_DIR.glob("*.jpg"))
-    if not images:
-        raise FileNotFoundError(
-            f"No sample images found in {SAMPLE_IMAGES_DIR}. "
-            "Run generate_test_images.py first."
-        )
-    return [str(p) for p in images]
-
-
-def get_test_images(plugin_name: str) -> list[str]:
+def get_test_images() -> list[str]:
     """
-    Return sorted list of real test image paths for a specific plugin.
+    Return sorted list of test image paths.
 
-    Test images live in tests/test-images/<plugin_name>/.
+    Test images live in tests/test-images/.
     Supports: .jpg .jpeg .png .bmp .tiff .tif .webp
-
-    Args:
-        plugin_name: Subdirectory name under test-images/ (e.g., "bioclip")
 
     Raises:
         FileNotFoundError: If directory missing or contains no images
     """
-    plugin_dir = TEST_IMAGES_DIR / plugin_name
-    if not plugin_dir.is_dir():
+    if not TEST_IMAGES_DIR.is_dir():
         raise FileNotFoundError(
-            f"Test image directory not found: {plugin_dir}\n"
+            f"Test image directory not found: {TEST_IMAGES_DIR}\n"
             f"Create it and add test images:\n"
-            f"  mkdir -p {plugin_dir}\n"
-            f"  cp your-photo.jpg {plugin_dir}/"
+            f"  mkdir -p {TEST_IMAGES_DIR}\n"
+            f"  cp your-photo.jpg {TEST_IMAGES_DIR}/"
         )
     images = sorted(
-        p for p in plugin_dir.iterdir()
+        p for p in TEST_IMAGES_DIR.iterdir()
         if p.suffix.lower() in IMAGE_EXTENSIONS and p.is_file()
+        and not p.name.startswith(".")
     )
     if not images:
         raise FileNotFoundError(
-            f"No image files in {plugin_dir}\n"
+            f"No image files in {TEST_IMAGES_DIR}\n"
             f"Supported formats: {', '.join(sorted(IMAGE_EXTENSIONS))}"
         )
     return [str(p) for p in images]

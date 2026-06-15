@@ -49,14 +49,18 @@ SUMMARY_PROMPT = (
 )
 
 
-def get_sample_images():
-    """Get test images from the sample-images directory."""
-    img_dir = os.path.join(os.path.dirname(__file__), "sample-images")
+def get_test_images():
+    """Get test images from the test-images directory."""
+    img_dir = os.path.join(os.path.dirname(__file__), "test-images")
     images = {}
-    for name in ["urban_street.jpg", "wildlife.jpg", "sky_clouds.jpg"]:
-        path = os.path.join(img_dir, name)
-        if os.path.exists(path):
-            images[name] = Image.open(path).convert("RGB")
+    if not os.path.isdir(img_dir):
+        return images
+    for name in sorted(os.listdir(img_dir)):
+        ext = os.path.splitext(name)[1].lower()
+        if ext in {".jpg", ".jpeg", ".png", ".bmp", ".webp"}:
+            path = os.path.join(img_dir, name)
+            if os.path.isfile(path):
+                images[name] = Image.open(path).convert("RGB")
     return images
 
 
@@ -151,9 +155,9 @@ def main():
     print("=" * 70)
 
     # Load test images
-    images = get_sample_images()
+    images = get_test_images()
     if not images:
-        print("ERROR: No test images found in sample-images/")
+        print("ERROR: No test images found in test-images/")
         sys.exit(1)
     print(f"\nFound {len(images)} test images: {', '.join(images.keys())}")
 
@@ -238,7 +242,7 @@ def main():
 
                 # Upload the source image
                 img_path = os.path.join(
-                    os.path.dirname(__file__), "sample-images", r["image"]
+                    os.path.dirname(__file__), "test-images", r["image"]
                 )
                 plugin.upload_file(
                     img_path, timestamp=ts,

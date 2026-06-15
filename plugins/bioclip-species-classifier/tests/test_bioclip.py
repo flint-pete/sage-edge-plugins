@@ -63,7 +63,7 @@ def test_bioclip_plugin():
     import tempfile
 
     classifier = FakeBioCLIPClassifier(rank="Class")
-    images = th.get_sample_images()
+    images = th.get_test_images()
     rank = "Class"
     rank_lower = rank.lower()
     min_confidence = 0.1

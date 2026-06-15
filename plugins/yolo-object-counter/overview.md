@@ -66,7 +66,7 @@ yolo-object-counter/
     ├── test_yolo_local.py          # Local validation on your own images
     ├── test_harness.py             # Pywaggle test harness library
     ├── test-images/                # Test input images
-    └── sample-images/              # Synthetic images for unit tests
+    └── test-images/                # Test images (committed)
 ```
 
 **What each file does:**
@@ -349,7 +349,7 @@ python3 -m pytest tests/test_yolo.py -v
 
 # Integration test — real yolo11x.pt on GPU, uses test images
 # Automatically picks up images from tests/test-images/ if present,
-# otherwise falls back to synthetic images in tests/sample-images/.
+# Uses real test images from tests/test-images/.
 python3 -m pytest tests/test_yolo_integration.py -v
 
 # Run everything (from project root — runs all plugins)

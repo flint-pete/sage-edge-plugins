@@ -24,10 +24,11 @@ if [ ! -d "$VENV" ]; then
 fi
 source "$VENV/bin/activate"
 
-# Generate sample images if missing
-if [ ! -d "$TESTS_DIR/sample-images" ] || [ -z "$(ls -A "$TESTS_DIR/sample-images/" 2>/dev/null)" ]; then
-    echo "Generating sample images ..."
-    python3 "$PROJECT_DIR/tests/generate_test_images.py" "$TESTS_DIR/sample-images"
+# Verify test images exist
+if [ ! -d "$TESTS_DIR/test-images" ] || [ -z "$(ls -A "$TESTS_DIR/test-images/" 2>/dev/null)" ]; then
+    echo "ERROR: No test images found in $TESTS_DIR/test-images/"
+    echo "Add test images (JPG/PNG) to that directory."
+    exit 1
 fi
 
 echo "=============================================="

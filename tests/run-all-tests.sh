@@ -71,12 +71,11 @@ fi
 echo "Plugins to test: ${PLUGINS[*]}"
 echo ""
 
-# Generate sample images for any plugin that lacks them
+# Verify test images exist for each plugin
 for plugin in "${PLUGINS[@]}"; do
-    sample_dir="$PROJECT_DIR/plugins/$plugin/tests/sample-images"
-    if [ ! -d "$sample_dir" ] || [ -z "$(ls -A "$sample_dir/" 2>/dev/null)" ]; then
-        echo "Generating sample images for $plugin ..."
-        python3 "$SCRIPT_DIR/generate_test_images.py" "$PROJECT_DIR/plugins/$plugin/tests/sample-images"
+    test_img_dir="$PROJECT_DIR/plugins/$plugin/tests/test-images"
+    if [ ! -d "$test_img_dir" ] || [ -z "$(ls -A "$test_img_dir/" 2>/dev/null)" ]; then
+        echo "WARNING: No test images for $plugin in $test_img_dir"
     fi
 done
 

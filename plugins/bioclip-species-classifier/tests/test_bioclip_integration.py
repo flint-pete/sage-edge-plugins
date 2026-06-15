@@ -31,26 +31,24 @@ os.environ["PYWAGGLE_LOG_DIR"] = OUTPUT_DIR
 from waggle.plugin import Plugin
 
 # ── paths ────────────────────────────────────────────────────────────
-SAMPLE_DIR = os.path.join(os.path.dirname(__file__), "sample-images")
 TEST_IMAGE_DIR = os.path.join(os.path.dirname(__file__), "test-images")
 
-# Use real test images if available, fall back to synthetic sample-images
 if os.path.isdir(TEST_IMAGE_DIR):
-    _test_imgs = sorted(
+    IMAGES = sorted(
         f for f in os.listdir(TEST_IMAGE_DIR)
         if os.path.splitext(f)[1].lower() in {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+        and not f.startswith("._")
     )
 else:
-    _test_imgs = []
+    IMAGES = []
 
-if _test_imgs:
-    IMAGE_DIR = TEST_IMAGE_DIR
-    IMAGES = _test_imgs
-    print(f"Using {len(IMAGES)} real test image(s) from {TEST_IMAGE_DIR}")
+IMAGE_DIR = TEST_IMAGE_DIR
+if IMAGES:
+    print(f"Found {len(IMAGES)} test image(s) in {TEST_IMAGE_DIR}")
 else:
-    IMAGE_DIR = SAMPLE_DIR
-    IMAGES = ["urban_street.jpg", "wildlife.jpg", "sky_clouds.jpg"]
-    print(f"No real test images in {TEST_IMAGE_DIR}, using synthetic samples")
+    print(f"ERROR: No test images found in {TEST_IMAGE_DIR}")
+    print(f"Add images: cp your-photo.jpg {TEST_IMAGE_DIR}/")
+    sys.exit(1)
 
 MODEL_STR = "hf-hub:imageomics/bioclip-2"
 RANKS_TO_TEST = ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"]

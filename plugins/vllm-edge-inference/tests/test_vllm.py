@@ -74,7 +74,7 @@ def test_vllm_plugin():
     import tempfile
 
     client = FakeVLLMClient(model="Qwen/Qwen3-VL-32B-Instruct")
-    images = th.get_sample_images()
+    images = th.get_test_images()
 
     detail_prompt = (
         "Describe this outdoor scene in detail. Include: "

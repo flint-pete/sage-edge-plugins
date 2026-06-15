@@ -3,7 +3,7 @@
 YOLO Local Test Runner — Detect objects in real images from a test directory.
 
 Runs the actual YOLO plugin (app.py) against every image in
-tests/test-images/yolo/, validates the pywaggle output, and prints
+tests/test-images/, validates the pywaggle output, and prints
 a detailed report with per-image detections, class counts, and timing.
 
 This is the go-to test for checking whether YOLO is performing well
@@ -15,8 +15,8 @@ Setup:
 
     # Add your test images — any JPG/PNG/WEBP photos of streets, wildlife,
     # indoor scenes, etc.  The more diverse, the better the test.
-    cp  my-street-photo.jpg   tests/test-images/yolo/
-    cp  my-wildlife-photo.png tests/test-images/yolo/
+    cp  my-street-photo.jpg   tests/test-images/
+    cp  my-wildlife-photo.png tests/test-images/
 
 Usage:
     # Default: detect all COCO classes

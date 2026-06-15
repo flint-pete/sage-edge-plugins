@@ -62,7 +62,7 @@ def test_yolo_plugin():
     from waggle.plugin import Plugin
     from waggle.plugin.time import get_timestamp
 
-    images = th.get_sample_images()
+    images = th.get_test_images()
     model_name = "yolo11n.pt"
     stream = "test"
 
