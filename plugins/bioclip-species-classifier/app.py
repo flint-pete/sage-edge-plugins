@@ -261,13 +261,15 @@ Examples:
                         logger.info("  #%d: %s (%.4f)", i, p["name"], p["confidence"])
 
                     # Upload source image
-                    tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
-                    cv2.imwrite(tmp.name, frame)
-                    plugin.upload_file(tmp.name, timestamp=timestamp,
+                    stem = os.path.splitext(source_name)[0]
+                    tmp_path = os.path.join(tempfile.gettempdir(),
+                                            f"{stem}-classified.jpg")
+                    cv2.imwrite(tmp_path, frame)
+                    plugin.upload_file(tmp_path, timestamp=timestamp,
                                        meta={"camera": source_name,
                                              "top_species": top["name"],
                                              "confidence": str(top["confidence"])})
-                    os.unlink(tmp.name)
+                    os.unlink(tmp_path)
                 else:
                     logger.info("No confident prediction (top=%.4f, threshold=%.2f)",
                                 predictions[0]["confidence"] if predictions else 0,

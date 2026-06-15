@@ -24,6 +24,7 @@ import base64
 import io
 import json
 import logging
+import os
 import tempfile
 import time
 
@@ -252,12 +253,14 @@ def main():
 
                     # Upload source image
                     if args.upload_image == "Y":
-                        tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
-                        cv2.imwrite(tmp.name, frame)
-                        plugin.upload_file(tmp.name, timestamp=sample.timestamp,
+                        stem = os.path.splitext(os.path.basename(args.stream))[0]
+                        tmp_path = os.path.join(tempfile.gettempdir(),
+                                                f"{stem}-described.jpg")
+                        cv2.imwrite(tmp_path, frame)
+                        plugin.upload_file(tmp_path, timestamp=sample.timestamp,
                                            meta={"camera": args.stream,
                                                  "description": description[:200]})
-                        os.unlink(tmp.name)
+                        os.unlink(tmp_path)
 
                 except requests.exceptions.ConnectionError:
                     logger.warning("vLLM server connection lost — retrying in 30s")

@@ -238,12 +238,14 @@ Examples:
                 # Upload annotated image
                 if args.upload_image == "Y" and detections:
                     annotated = draw_boxes(frame, detections)
-                    tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
-                    cv2.imwrite(tmp.name, annotated)
-                    plugin.upload_file(tmp.name, timestamp=timestamp,
+                    stem = os.path.splitext(source_name)[0]
+                    tmp_path = os.path.join(tempfile.gettempdir(),
+                                            f"{stem}-annotated.jpg")
+                    cv2.imwrite(tmp_path, annotated)
+                    plugin.upload_file(tmp_path, timestamp=timestamp,
                                        meta={"camera": source_name,
                                              "detections": str(len(detections))})
-                    os.unlink(tmp.name)
+                    os.unlink(tmp_path)
                     logger.info("Uploaded annotated image (%d detections)", len(detections))
 
                 if not detections:
