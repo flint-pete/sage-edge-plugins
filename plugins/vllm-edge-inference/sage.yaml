@@ -7,12 +7,12 @@ collaborators: "Waggle Team <https://wa8.gl>"
 funding: "NSF 1935984"
 license: "The license agreed by Argonne National Laboratory"
 keywords: "LLM, VLM, vLLM, scene description, vision-language, camera, inference, Qwen, natural language"
-homepage: "https://github.com/waggle-sensor/plugin-vllm-edge-inference/blob/main/ecr-meta/ecr-science-description.md"
+homepage: "https://github.com/flint-pete/sage-edge-plugins/blob/main/plugins/vllm-edge-inference/ecr-meta/ecr-science-description.md"
 source:
     architectures:
         - "linux/arm64"
         - "linux/amd64"
-    url: "https://github.com/waggle-sensor/plugin-vllm-edge-inference.git"
+    url: "https://github.com/flint-pete/sage-edge-plugins.git"
     branch: "main"
 inputs:
     - id: "stream"

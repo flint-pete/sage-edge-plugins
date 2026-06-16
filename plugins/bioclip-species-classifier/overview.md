@@ -71,8 +71,7 @@ bioclip-species-classifier/
     ├── run-tests.sh                # Run all tests for this plugin
     ├── test_bioclip_local.py       # Local validation on your own images
     ├── test_harness.py             # Pywaggle test harness library
-    ├── test-images/                # Test input images
-    └── test-images/                # Test images (committed)
+    └── test-images/                # Test images (committed, real photos)
 ```
 
 ### What each file does

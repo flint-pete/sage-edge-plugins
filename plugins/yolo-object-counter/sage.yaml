@@ -7,12 +7,12 @@ collaborators: "Waggle Team <https://wa8.gl>"
 funding: "NSF 1935984"
 license: "The license agreed by Argonne National Laboratory"
 keywords: "object detection, YOLO, machine learning, camera, counting, computer vision, urban analytics, wildlife monitoring"
-homepage: "https://github.com/waggle-sensor/plugin-yolo-object-counter/blob/main/ecr-meta/ecr-science-description.md"
+homepage: "https://github.com/flint-pete/sage-edge-plugins/blob/main/plugins/yolo-object-counter/ecr-meta/ecr-science-description.md"
 source:
     architectures:
         - "linux/arm64"
         - "linux/amd64"
-    url: "https://github.com/waggle-sensor/plugin-yolo-object-counter.git"
+    url: "https://github.com/flint-pete/sage-edge-plugins.git"
     branch: "main"
 inputs:
     - id: "stream"
