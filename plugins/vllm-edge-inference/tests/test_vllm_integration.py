@@ -240,12 +240,16 @@ def main():
                           "tokens": str(r["summary_tokens"])},
                 )
 
-                # Upload the source image
+                # Upload the source image with a meaningful filename
                 img_path = os.path.join(
                     os.path.dirname(__file__), "test-images", r["image"]
                 )
+                stem = os.path.splitext(r["image"])[0]
+                tmp_path = os.path.join(out_dir, f"{stem}-described.jpg")
+                import shutil
+                shutil.copy2(img_path, tmp_path)
                 plugin.upload_file(
-                    img_path, timestamp=ts,
+                    tmp_path, timestamp=ts,
                     meta={"camera": "test",
                           "description": r["description"][:200]},
                 )

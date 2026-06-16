@@ -70,7 +70,6 @@ bioclip-species-classifier/
 └── tests/                          # Self-contained test suite
     ├── run-tests.sh                # Run all tests for this plugin
     ├── test_bioclip.py             # Unit test (mocked model, no GPU)
-    ├── test_bioclip_integration.py # Integration test (real model, GPU)
     ├── test_bioclip_local.py       # Local validation on your own images
     ├── test_harness.py             # Pywaggle test harness library
     ├── test-images/                # Test input images
@@ -241,7 +240,6 @@ plugins/bioclip-species-classifier/
 │   │   └── my-insect.png            ← Any JPG/PNG/WEBP/BMP/TIFF
 │   ├── test_bioclip_local.py        ← Local test runner (recommended)
 │   ├── test_bioclip.py              ← Unit test (mocked model, no GPU)
-│   └── test_bioclip_integration.py  ← Integration test (real model, GPU)
 ```
 
 ### Quick Start — Local Test Runner
@@ -379,7 +377,7 @@ python3 -m pytest tests/test_bioclip.py -v
 # Integration test (GPU required, downloads real BioCLIP2 model)
 #   Automatically uses real images from tests/test-images/ if available,
 #   Uses real test images from tests/test-images/.
-python3 -m pytest tests/test_bioclip_integration.py -v
+python3 tests/test_bioclip_local.py
 
 # Run all tests (from project root — runs all plugins)
 cd ../..

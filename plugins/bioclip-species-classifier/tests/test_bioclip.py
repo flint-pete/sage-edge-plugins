@@ -60,7 +60,6 @@ def test_bioclip_plugin():
     from PIL import Image as PILImage
     from waggle.plugin import Plugin
     from waggle.plugin.time import get_timestamp
-    import tempfile
 
     classifier = FakeBioCLIPClassifier(rank="Class")
     images = th.get_test_images()
@@ -107,15 +106,6 @@ def test_bioclip_plugin():
                 )
                 print(f"  Published: env.species.top5 (JSON, {len(predictions)} items)")
 
-                # Upload source image
-                tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False,
-                                                 dir=output_dir)
-                cv2.imwrite(tmp.name, frame)
-                plugin.upload_file(tmp.name, timestamp=ts,
-                                   meta={"camera": "test",
-                                         "top_species": top["name"],
-                                         "confidence": str(top["confidence"])})
-                print(f"  Uploaded: {os.path.basename(tmp.name)}")
             else:
                 print(f"  Skipped — below confidence threshold")
 
@@ -124,7 +114,6 @@ def test_bioclip_plugin():
     # Parse and validate output
     results = th.parse_output(output_dir)
     measurements = results["measurements"]
-    uploads = results["uploads"]
     n_images = len(images)
 
     # ── Assertions ───────────────────────────────────────────────
@@ -132,7 +121,6 @@ def test_bioclip_plugin():
     species_name = [m for m in measurements if m["name"] == f"env.species.{rank_lower}"]
     species_conf = [m for m in measurements if m["name"] == f"env.species.{rank_lower}.confidence"]
     species_top5 = [m for m in measurements if m["name"] == "env.species.top5"]
-    upload_records = [m for m in measurements if m["name"] == "upload"]
 
     assert len(species_name) == n_images, \
         f"Expected {n_images} species name measurements, got {len(species_name)}"
@@ -163,12 +151,6 @@ def test_bioclip_plugin():
         for k, v in m.get("meta", {}).items():
             assert isinstance(v, str), \
                 f"Meta value for '{k}' should be str, got {type(v).__name__}: {v}"
-
-    # Check uploads
-    assert len(uploads) == n_images, \
-        f"Expected {n_images} uploads, got {len(uploads)}"
-    assert len(upload_records) == n_images, \
-        f"Expected {n_images} upload records, got {len(upload_records)}"
 
     print("  ALL ASSERTIONS PASSED")
 

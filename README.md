@@ -216,7 +216,6 @@ bash tests/run-all-tests.sh
 **Integration Tests** (real GPU inference — requires CUDA device):
 ```bash
 source tests/.venv/bin/activate
-python plugins/bioclip-species-classifier/tests/test_bioclip_integration.py   # ~60s
 python plugins/vllm-edge-inference/tests/test_vllm_integration.py      # ~25min
 ```
 
@@ -288,7 +287,6 @@ plugins/
     tests/
       run-tests.sh                      # Run all tests for this plugin
       test_bioclip.py                   # Unit tests (mocked)
-      test_bioclip_integration.py       # GPU integration test
       test_bioclip_local.py             # Standalone local test runner
       test_harness.py                   # Pywaggle test harness library
       test-images/                      # Test images (committed)

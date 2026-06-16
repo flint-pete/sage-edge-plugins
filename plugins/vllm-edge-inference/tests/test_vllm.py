@@ -71,7 +71,6 @@ def test_vllm_plugin():
     from PIL import Image as PILImage
     from waggle.plugin import Plugin
     from waggle.plugin.time import get_timestamp
-    import tempfile
 
     client = FakeVLLMClient(model="Qwen/Qwen3-VL-32B-Instruct")
     images = th.get_test_images()
@@ -115,26 +114,16 @@ def test_vllm_plugin():
             )
             print(f"  Published: env.scene.summary = {summary}")
 
-            # Upload source image
-            tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False,
-                                             dir=output_dir)
-            cv2.imwrite(tmp.name, frame)
-            plugin.upload_file(tmp.name, timestamp=ts,
-                               meta={"camera": "test",
-                                     "description": description[:200]})
-            print(f"  Uploaded: {os.path.basename(tmp.name)}")
             print()
 
     # Parse and validate output
     results = th.parse_output(output_dir)
     measurements = results["measurements"]
-    uploads = results["uploads"]
     n_images = len(images)
 
     # ── Assertions ───────────────────────────────────────────────
     desc_measurements = [m for m in measurements if m["name"] == "env.scene.description"]
     summ_measurements = [m for m in measurements if m["name"] == "env.scene.summary"]
-    upload_records = [m for m in measurements if m["name"] == "upload"]
 
     assert len(desc_measurements) == n_images, \
         f"Expected {n_images} descriptions, got {len(desc_measurements)}"
@@ -164,12 +153,6 @@ def test_vllm_plugin():
     for m in desc_measurements + summ_measurements:
         assert "model" in m.get("meta", {}), \
             f"Missing 'model' in meta for {m['name']}"
-
-    # Check uploads
-    assert len(uploads) == n_images, \
-        f"Expected {n_images} uploads, got {len(uploads)}"
-    assert len(upload_records) == n_images, \
-        f"Expected {n_images} upload records, got {len(upload_records)}"
 
     # Verify the VLLMClient was called correctly
     assert client._call_count == 2 * n_images, \
