@@ -170,9 +170,20 @@ All parameters are passed as command-line arguments:
 | `--interval` | int | `30` | Seconds between captures (camera mode only, ignored with `--image-dir`) |
 | `--conf-thres` | float | `0.25` | Minimum detection confidence (0.0–1.0) |
 | `--iou-thres` | float | `0.45` | Non-maximum suppression IoU threshold (0.0–1.0) |
+| `--imgsz` | int | `640` | Input image size — images are resized to this before inference. Larger values detect smaller objects but use more memory and are slower |
+| `--half` | flag | off | FP16 half-precision inference (faster, slightly less accurate) |
+| `--max-det` | int | `300` | Maximum detections per image. Lower this for scenes with few objects |
+| `--augment` | flag | off | Test-time augmentation (TTA) — runs inference at multiple scales/flips for better accuracy at ~3x speed cost |
+| `--agnostic-nms` | flag | off | Class-agnostic NMS — treats all classes as one during suppression. Useful for overlapping objects of different classes |
 | `--classes` | string | `""` (all) | Comma-separated COCO class names to count (empty = all 80) |
 | `--continuous` | string | `Y` | `Y` = loop forever, `N` = process once and exit |
 | `--upload-image` | string | `Y` | `Y` = upload annotated image with bounding boxes each cycle |
+
+> **Ultralytics documentation**: The inference parameters `--conf-thres`,
+> `--iou-thres`, `--imgsz`, `--half`, `--max-det`, `--augment`, and
+> `--agnostic-nms` are passed directly to the Ultralytics YOLO predict API.
+> For detailed explanations, trade-offs, and advanced tuning, see:
+> **https://docs.ultralytics.com/modes/predict/#inference-arguments**
 
 ### The `--classes` Filter
 

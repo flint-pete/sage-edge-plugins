@@ -37,13 +37,20 @@ logger = logging.getLogger("yolo-object-counter")
 class YOLODetector:
     """Thin wrapper around Ultralytics YOLO for Sage plugins."""
 
-    def __init__(self, model_name: str, conf_thres: float = 0.25, iou_thres: float = 0.45):
+    def __init__(self, model_name: str, conf_thres: float = 0.25, iou_thres: float = 0.45,
+                 imgsz: int = 640, half: bool = False, max_det: int = 300,
+                 augment: bool = False, agnostic_nms: bool = False):
         self.model_name = model_name
         self.conf_thres = conf_thres
         self.iou_thres = iou_thres
+        self.imgsz = imgsz
+        self.half = half
+        self.max_det = max_det
+        self.augment = augment
+        self.agnostic_nms = agnostic_nms
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        logger.info("Loading %s on %s (conf=%.2f, iou=%.2f)",
-                     model_name, self.device, conf_thres, iou_thres)
+        logger.info("Loading %s on %s (conf=%.2f, iou=%.2f, imgsz=%d)",
+                     model_name, self.device, conf_thres, iou_thres, imgsz)
         self.model = YOLO(model_name)
         self.model.to(self.device)
         logger.info("Model loaded — %d classes available", len(self.model.names))
@@ -57,6 +64,11 @@ class YOLODetector:
             frame,
             conf=self.conf_thres,
             iou=self.iou_thres,
+            imgsz=self.imgsz,
+            half=self.half,
+            max_det=self.max_det,
+            augment=self.augment,
+            agnostic_nms=self.agnostic_nms,
             verbose=False,
         )
         detections = []
@@ -155,9 +167,27 @@ Examples:
     parser.add_argument("--interval", type=int, default=30,
                         help="Seconds between captures (camera mode only)")
     parser.add_argument("--conf-thres", type=float, default=0.25,
-                        help="Confidence threshold")
+                        help="Confidence threshold (0.0-1.0, default: 0.25)")
     parser.add_argument("--iou-thres", type=float, default=0.45,
-                        help="IoU threshold for NMS")
+                        help="IoU threshold for NMS (0.0-1.0, default: 0.45)")
+    parser.add_argument("--imgsz", type=int, default=640,
+                        help="Input image size for inference — images are resized to this "
+                             "before YOLO processes them (default: 640). Larger values "
+                             "detect smaller objects but use more GPU memory and are slower. "
+                             "See: https://docs.ultralytics.com/modes/predict/#inference-arguments")
+    parser.add_argument("--half", action="store_true",
+                        help="Use FP16 half-precision inference (faster, slightly less accurate). "
+                             "See: https://docs.ultralytics.com/modes/predict/#inference-arguments")
+    parser.add_argument("--max-det", type=int, default=300,
+                        help="Maximum detections per image (default: 300). Lower this if you "
+                             "only expect a few objects per frame.")
+    parser.add_argument("--augment", action="store_true",
+                        help="Enable test-time augmentation (TTA) — runs inference at multiple "
+                             "scales/flips for better accuracy at the cost of ~3x slower speed. "
+                             "See: https://docs.ultralytics.com/modes/predict/#inference-arguments")
+    parser.add_argument("--agnostic-nms", action="store_true",
+                        help="Class-agnostic NMS — treats all classes as one during NMS. "
+                             "Useful when overlapping objects of different classes cause duplicates.")
     parser.add_argument("--classes", default="",
                         help="Comma-separated classes to count (empty = all)")
     parser.add_argument("--continuous", default="Y",
@@ -171,7 +201,10 @@ Examples:
         target_classes = [c.strip().lower() for c in args.classes.split(",")]
         logger.info("Filtering to classes: %s", target_classes)
 
-    detector = YOLODetector(args.model, args.conf_thres, args.iou_thres)
+    detector = YOLODetector(args.model, args.conf_thres, args.iou_thres,
+                            imgsz=args.imgsz, half=args.half,
+                            max_det=args.max_det, augment=args.augment,
+                            agnostic_nms=args.agnostic_nms)
 
     # ── Choose image source ──────────────────────────────────────────
     using_image_dir = args.image_dir is not None
