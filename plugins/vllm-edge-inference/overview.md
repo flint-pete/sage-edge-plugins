@@ -74,7 +74,6 @@ vllm-edge-inference/
 │   └── vllm-scene-job.yaml        # Deploy on W097 with Qwen3-VL-32B
 └── tests/                          # Self-contained test suite
     ├── run-tests.sh                # Run all tests for this plugin
-    ├── test_vllm.py                # Unit test (mocked model, no GPU)
     ├── test_vllm_integration.py    # Integration test (real model, GPU)
     ├── test_harness.py             # Pywaggle test harness library
     └── test-images/                # Test images (committed)
@@ -355,7 +354,7 @@ cd /path/to/Sage-agents/plugins/vllm-edge-inference
 source ../../tests/.venv/bin/activate
 
 # Unit test (no GPU needed, mocks vLLM HTTP calls)
-python3 -m pytest tests/test_vllm.py -v
+python3 tests/test_vllm_integration.py
 
 # Integration test (GPU required, starts real vLLM server)
 # WARNING: takes ~10 minutes for model loading + warmup

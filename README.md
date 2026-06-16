@@ -15,7 +15,7 @@ via the Waggle data pipeline.
 ## Performance Summary
 
 All three plugins tested end-to-end on NVIDIA DGX Spark (GB10 Blackwell, aarch64,
-128GB unified memory, CUDA 13.0). Unit tests (mocked models) and integration tests
+128GB unified memory, CUDA 13.0). Tests run real model inference on GPU
 (real GPU inference) all pass.
 
 | Plugin | Model | Model Size | Load Time | Inference | Notes |
@@ -27,7 +27,7 @@ All three plugins tested end-to-end on NVIDIA DGX Spark (GB10 Blackwell, aarch64
 ### Test Results
 
 ```
-Unit tests:      3/3 passed (mocked models, no GPU required)
+Plugin tests:    3/3 passed (real model inference, GPU required)
 Integration tests:
   YOLO:          PASSED — 3 images, avg 20.6ms inference, 5 detections (birds)
   BioCLIP:       PASSED — 3 images, Class + Species rank, 9 measurements published
@@ -200,14 +200,14 @@ ls test-output/uploads/          # Uploaded image files
 Each plugin has self-contained tests in `plugins/<name>/tests/`.  A shared
 virtual environment at `tests/.venv` provides all dependencies.
 
-**Unit Tests** (no GPU required — mocked models):
+**Plugin Tests** (GPU required — real model inference):
 ```bash
 source tests/.venv/bin/activate
 
 # Per-plugin
-python -m pytest plugins/yolo-object-counter/tests/test_yolo.py -v
-python -m pytest plugins/bioclip-species-classifier/tests/test_bioclip.py -v
-python -m pytest plugins/vllm-edge-inference/tests/test_vllm.py -v
+python3 plugins/yolo-object-counter/tests/test_yolo_local.py
+python3 plugins/bioclip-species-classifier/tests/test_bioclip_local.py
+python3 plugins/vllm-edge-inference/tests/test_vllm_integration.py
 
 # All at once
 bash tests/run-all-tests.sh
@@ -265,7 +265,6 @@ plugins/
       yolo-counter-job.yaml             # Sample job: deploy on W097 (Chicago)
     tests/
       run-tests.sh                      # Run all tests for this plugin
-      test_yolo.py                      # Unit tests (mocked)
       test_yolo_local.py                # Standalone local test runner
       test_harness.py                   # Pywaggle test harness library
       test-images/                      # Test images (committed)
@@ -286,7 +285,6 @@ plugins/
       bioclip-species-job.yaml          # Sample job: deploy on W019
     tests/
       run-tests.sh                      # Run all tests for this plugin
-      test_bioclip.py                   # Unit tests (mocked)
       test_bioclip_local.py             # Standalone local test runner
       test_harness.py                   # Pywaggle test harness library
       test-images/                      # Test images (committed)
@@ -307,7 +305,6 @@ plugins/
       vllm-scene-job.yaml              # Sample job: deploy on W097 with Qwen3-VL-32B
     tests/
       run-tests.sh                      # Run all tests for this plugin
-      test_vllm.py                      # Unit tests (mocked)
       test_vllm_integration.py          # GPU integration test
       test_harness.py                   # Pywaggle test harness library
       test-images/                      # Test images (committed)
@@ -316,7 +313,7 @@ jobs/
   combined-ml-pipeline-job.yaml         # All 3 plugins on one node
 
 tests/
-  run-all-tests.sh                      # Discovers and runs all plugin unit tests
+  run-all-tests.sh                      # Discovers and runs all plugin tests (GPU required)
 ```
 
 ### ECR Submission Readiness

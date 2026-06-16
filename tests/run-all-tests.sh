@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# run-all-tests.sh — Run all Sage plugin unit tests
+# run-all-tests.sh — Run all Sage plugin tests (GPU required)
 #
 # Usage:
 #   cd ~/AI-projects/Sage-agents
-#   ./tests/run-all-tests.sh              # run all unit tests
+#   ./tests/run-all-tests.sh              # run all plugin tests (GPU required)
 #   ./tests/run-all-tests.sh yolo         # run only YOLO tests
 #   ./tests/run-all-tests.sh bioclip vllm # run BioCLIP and vLLM tests
 #
@@ -99,16 +99,14 @@ run_test() {
     fi
 }
 
-# Run unit tests for each plugin
+# Run tests for each plugin (GPU required)
 for plugin in "${PLUGINS[@]}"; do
     test_dir="$PROJECT_DIR/plugins/$plugin/tests"
-    # Find unit test files (not integration, not local)
+    # Find test files, skip test_harness.py (shared library, not a runnable test)
     for test_file in "$test_dir"/test_*.py; do
         [ -f "$test_file" ] || continue
         basename="$(basename "$test_file")"
-        # Skip integration and local tests (those need GPU/real models)
-        # Skip test_harness.py (shared library, not a runnable test)
-        if [[ "$basename" == *"_integration"* ]] || [[ "$basename" == *"_local"* ]] || [[ "$basename" == "test_harness.py" ]]; then
+        if [[ "$basename" == "test_harness.py" ]]; then
             continue
         fi
         run_test "$plugin / $basename" "$test_file"

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# run-tests.sh — Run YOLO Object Counter unit tests
+# run-tests.sh — Run YOLO Object Counter local test (GPU required)
 #
 # Usage:
 #   cd plugins/yolo-object-counter
 #   ./tests/run-tests.sh
 #
 # This script activates the shared venv at tests/.venv (project root)
-# and runs the unit test for this plugin.
+# and runs the test for this plugin.
 
 set -euo pipefail
 TESTS_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -32,7 +32,7 @@ if [ ! -d "$TESTS_DIR/test-images" ] || [ -z "$(ls -A "$TESTS_DIR/test-images/" 
 fi
 
 echo "=============================================="
-echo "  YOLO Object Counter — Unit Tests"
+echo "  YOLO Object Counter — Local Test"
 echo "  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=============================================="
-python3 "$TESTS_DIR/test_yolo.py"
+python3 "$TESTS_DIR/test_yolo_local.py"

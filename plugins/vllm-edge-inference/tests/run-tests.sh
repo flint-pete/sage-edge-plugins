@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# run-tests.sh — Run vLLM Edge Inference unit tests
+# run-tests.sh — Run vLLM Edge Inference integration test (GPU required)
 #
 # Usage:
 #   cd plugins/vllm-edge-inference
 #   ./tests/run-tests.sh
 #
 # This script activates the shared venv at tests/.venv (project root)
-# and runs the unit test for this plugin.
+# and runs the test for this plugin.
 
 set -euo pipefail
 TESTS_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -32,7 +32,7 @@ if [ ! -d "$TESTS_DIR/test-images" ] || [ -z "$(ls -A "$TESTS_DIR/test-images/" 
 fi
 
 echo "=============================================="
-echo "  vLLM Edge Inference — Unit Tests"
+echo "  vLLM Edge Inference — Integration Test"
 echo "  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=============================================="
-python3 "$TESTS_DIR/test_vllm.py"
+python3 "$TESTS_DIR/test_vllm_integration.py"

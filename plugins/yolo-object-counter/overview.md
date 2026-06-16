@@ -61,7 +61,6 @@ yolo-object-counter/
 │   └── yolo-counter-job.yaml       # Deploy on W097 counting people & cars
 └── tests/                          # Self-contained test suite
     ├── run-tests.sh                # Run all tests for this plugin
-    ├── test_yolo.py                # Unit test (mocked model, no GPU)
     ├── test_yolo_local.py          # Local validation on your own images
     ├── test_harness.py             # Pywaggle test harness library
     ├── test-images/                # Test input images
@@ -336,7 +335,7 @@ python tests/test_yolo_local.py -v
 
 ### 5d. Test Suite (pytest)
 
-The full test suite includes both unit tests (mocked model, no GPU) and
+The test suite runs real YOLO inference on GPU with
 integration tests (real model, GPU required):
 
 ```bash
@@ -344,7 +343,7 @@ cd Sage-agents/plugins/yolo-object-counter
 source ../../tests/.venv/bin/activate
 
 # Unit test — fast, no GPU, mocked YOLO model
-python3 -m pytest tests/test_yolo.py -v
+python3 tests/test_yolo_local.py
 
 # Integration test — real yolo11x.pt on GPU, uses test images
 # Automatically picks up images from tests/test-images/ if present,
