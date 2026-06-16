@@ -216,7 +216,6 @@ bash tests/run-all-tests.sh
 **Integration Tests** (real GPU inference — requires CUDA device):
 ```bash
 source tests/.venv/bin/activate
-python plugins/yolo-object-counter/tests/test_yolo_integration.py      # ~30s
 python plugins/bioclip-species-classifier/tests/test_bioclip_integration.py   # ~60s
 python plugins/vllm-edge-inference/tests/test_vllm_integration.py      # ~25min
 ```
@@ -268,7 +267,6 @@ plugins/
     tests/
       run-tests.sh                      # Run all tests for this plugin
       test_yolo.py                      # Unit tests (mocked)
-      test_yolo_integration.py          # GPU integration test
       test_yolo_local.py                # Standalone local test runner
       test_harness.py                   # Pywaggle test harness library
       test-images/                      # Test images (committed)

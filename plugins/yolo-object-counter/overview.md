@@ -62,7 +62,6 @@ yolo-object-counter/
 └── tests/                          # Self-contained test suite
     ├── run-tests.sh                # Run all tests for this plugin
     ├── test_yolo.py                # Unit test (mocked model, no GPU)
-    ├── test_yolo_integration.py    # Integration test (real model, GPU)
     ├── test_yolo_local.py          # Local validation on your own images
     ├── test_harness.py             # Pywaggle test harness library
     ├── test-images/                # Test input images
@@ -350,7 +349,7 @@ python3 -m pytest tests/test_yolo.py -v
 # Integration test — real yolo11x.pt on GPU, uses test images
 # Automatically picks up images from tests/test-images/ if present,
 # Uses real test images from tests/test-images/.
-python3 -m pytest tests/test_yolo_integration.py -v
+python3 tests/test_yolo_local.py
 
 # Run everything (from project root — runs all plugins)
 cd ../..
