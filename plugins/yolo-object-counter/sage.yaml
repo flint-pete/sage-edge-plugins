@@ -18,6 +18,9 @@ inputs:
     - id: "stream"
       type: "string"
       description: "Camera stream name (e.g. bottom_camera, top_camera) or RTSP URL"
+    - id: "image-dir"
+      type: "string"
+      description: "Directory of test images for local batch testing (replaces --stream)"
     - id: "model"
       type: "string"
       description: "YOLO model name/path — yolo11x.pt (default, 54.7% mAP), yolo11n.pt (speed), yolov8x.pt"
@@ -47,4 +50,4 @@ metadata:
     ontology: env.count.*
 testing:
     mask_entrypoint: true
-    command: ["python3", "-m", "pytest", "tests/test_yolo.py", "-v"]
+    command: ["python3", "tests/test_yolo_local.py"]

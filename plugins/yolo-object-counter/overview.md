@@ -164,14 +164,15 @@ All parameters are passed as command-line arguments:
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--stream` | string | `bottom_camera` | Camera source |
-| `--model` | string | `yolo11x.pt` | YOLO model name |
-| `--interval` | int | `30` | Seconds between captures |
-| `--conf-thres` | float | `0.25` | Minimum detection confidence |
-| `--iou-thres` | float | `0.45` | NMS IoU threshold |
-| `--classes` | string | `""` (all) | Comma-separated target classes |
-| `--continuous` | string | `Y` | `Y` = loop, `N` = single-shot |
-| `--upload-image` | string | `Y` | Upload annotated images |
+| `--stream` | string | `bottom_camera` | Camera source name or RTSP URL |
+| `--image-dir` | string | (none) | Directory of test images — replaces `--stream` for local batch testing |
+| `--model` | string | `yolo11x.pt` | YOLO model name (see Section 9 for options) |
+| `--interval` | int | `30` | Seconds between captures (camera mode only, ignored with `--image-dir`) |
+| `--conf-thres` | float | `0.25` | Minimum detection confidence (0.0–1.0) |
+| `--iou-thres` | float | `0.45` | Non-maximum suppression IoU threshold (0.0–1.0) |
+| `--classes` | string | `""` (all) | Comma-separated COCO class names to count (empty = all 80) |
+| `--continuous` | string | `Y` | `Y` = loop forever, `N` = process once and exit |
+| `--upload-image` | string | `Y` | `Y` = upload annotated image with bounding boxes each cycle |
 
 ### The `--classes` Filter
 
@@ -333,25 +334,34 @@ python tests/test_yolo_local.py -v
 ======================================================================
 ```
 
-### 5d. Test Suite (pytest)
+### 5d. Test Runner CLI Options
 
-The test suite runs real YOLO inference on GPU with
-integration tests (real model, GPU required):
+The test runner (`test_yolo_local.py`) accepts these command-line flags:
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--confidence` | float | `0.25` | Minimum detection confidence |
+| `--iou` | float | `0.45` | IoU threshold for NMS |
+| `--classes` | string | (all) | Comma-separated class filter |
+| `--add-no-detect-text` | flag | on | Save "detected no objects" copy for images with zero detections |
+| `--no-add-no-detect-text` | flag | off | Disable the above |
+| `--verbose`, `-v` | flag | off | Show all plugin log output |
 
 ```bash
+# Run the test suite
 cd Sage-agents/plugins/yolo-object-counter
 source ../../tests/.venv/bin/activate
 
-# Unit test — fast, no GPU, mocked YOLO model
+# Default: all 80 COCO classes, conf=0.25
 python3 tests/test_yolo_local.py
 
-# Integration test — real yolo11x.pt on GPU, uses test images
-# Automatically picks up images from tests/test-images/ if present,
-# Uses real test images from tests/test-images/.
-python3 tests/test_yolo_local.py
+# Filter to birds and people, high confidence
+python3 tests/test_yolo_local.py --classes bird,person --confidence 0.7
 
-# Run everything (from project root — runs all plugins)
-cd ../..
+# Verbose — see all plugin log messages
+python3 tests/test_yolo_local.py -v
+
+# Run all plugins (from project root)
 bash tests/run-all-tests.sh
 ```
 

@@ -165,13 +165,14 @@ We use `pybioclip` rather than raw `open_clip` because:
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--stream` | string | `bottom_camera` | Camera source |
-| `--rank` | string | `Class` | Taxonomic rank (see Section 5) |
-| `--model` | string | `hf-hub:imageomics/bioclip-2` | BioCLIP model string |
-| `--interval` | int | `60` | Seconds between captures |
-| `--min-confidence` | float | `0.1` | Minimum confidence to publish |
-| `--top-k` | int | `5` | Number of top predictions |
-| `--continuous` | string | `Y` | `Y` = loop, `N` = single-shot |
+| `--stream` | string | `bottom_camera` | Camera source name or RTSP URL |
+| `--image-dir` | string | (none) | Directory of test images — replaces `--stream` for local batch testing |
+| `--rank` | string | `Class` | Taxonomic rank: Kingdom, Phylum, Class, Order, Family, Genus, or Species |
+| `--model` | string | `hf-hub:imageomics/bioclip-2` | BioCLIP model string (default: BioCLIP2 from HuggingFace) |
+| `--interval` | int | `60` | Seconds between captures (camera mode only, ignored with `--image-dir`) |
+| `--min-confidence` | float | `0.1` | Minimum confidence to publish a prediction (0.0–1.0) |
+| `--top-k` | int | `5` | Number of top predictions to publish per frame |
+| `--continuous` | string | `Y` | `Y` = loop forever, `N` = process once and exit |
 
 ### Key Parameter Interactions
 
@@ -303,15 +304,15 @@ The `--all-ranks` sweep is useful for understanding how confidence
 degrades from Kingdom (very high) down to Species (lower, because there
 are 450K+ candidates).
 
-### Test Runner Options
+### Test Runner CLI Options
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--rank` | `Species` | Which taxonomic rank to classify at |
-| `--all-ranks` | off | Sweep all 7 ranks (Kingdom through Species) |
-| `--min-confidence` | `0.01` | Minimum confidence to publish (lower = keep more) |
-| `--top-k` | `5` | How many top predictions to show |
-| `--verbose` / `-v` | off | Show full plugin log output |
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--rank` | string | `Species` | Which taxonomic rank to classify at |
+| `--all-ranks` | flag | off | Sweep all 7 ranks (Kingdom through Species) |
+| `--min-confidence` | float | `0.01` | Minimum confidence to publish (lower = keep more) |
+| `--top-k` | int | `5` | How many top predictions to show |
+| `--verbose`, `-v` | flag | off | Show full plugin log output |
 
 ### Output Files
 
@@ -369,15 +370,16 @@ Each image produces 3 measurements + 1 upload:
 cd /path/to/Sage-agents/plugins/bioclip-species-classifier
 source ../../tests/.venv/bin/activate
 
-# Unit test (no GPU needed, uses mocked model)
+# Real GPU inference against test images
 python3 tests/test_bioclip_local.py
 
-# Integration test (GPU required, downloads real BioCLIP2 model)
-#   Automatically uses real images from tests/test-images/ if available,
-#   Uses real test images from tests/test-images/.
-python3 tests/test_bioclip_local.py
+# Classify at a specific rank
+python3 tests/test_bioclip_local.py --rank Order
 
-# Run all tests (from project root — runs all plugins)
+# Sweep all 7 taxonomic ranks
+python3 tests/test_bioclip_local.py --all-ranks
+
+# Run all plugins (from project root)
 cd ../..
 bash tests/run-all-tests.sh
 ```

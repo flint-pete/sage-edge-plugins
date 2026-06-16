@@ -353,12 +353,13 @@ cat test-output/data.ndjson
 cd /path/to/Sage-agents/plugins/vllm-edge-inference
 source ../../tests/.venv/bin/activate
 
-# Unit test (no GPU needed, mocks vLLM HTTP calls)
+# GPU required — starts real vLLM server, runs inference
+# WARNING: takes ~10 minutes for model loading + warmup
 python3 tests/test_vllm_integration.py
 
-# Integration test (GPU required, starts real vLLM server)
-# WARNING: takes ~10 minutes for model loading + warmup
-python3 -m pytest tests/test_vllm_integration.py -v
+# Run all plugins (from project root)
+cd ../..
+bash tests/run-all-tests.sh
 ```
 
 ### Testing with curl (Useful for Debugging)

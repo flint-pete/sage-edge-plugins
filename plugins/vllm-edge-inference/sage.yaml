@@ -71,4 +71,4 @@ metadata:
     ontology: env.scene.*
 testing:
     mask_entrypoint: true
-    command: ["python3", "-m", "pytest", "tests/test_vllm.py", "-v"]
+    command: ["python3", "tests/test_vllm_integration.py"]
