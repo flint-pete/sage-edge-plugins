@@ -613,3 +613,78 @@ Measured on NVIDIA GB10 (Blackwell), 128 GB unified memory, aarch64:
 These benchmarks show that YOLO11x is extremely lightweight relative to the
 128 GB available on Thor nodes, leaving ample room for concurrent plugins
 (BioCLIP, vLLM).
+
+---
+
+## Appendix: Further Reading — Beyond Object Counting
+
+This plugin performs **single-frame object counting** using the 80 pretrained
+COCO classes.  That's a solid starting point, but YOLO11 and the Sage
+platform support much more.  This section outlines advanced directions for
+students who want to go further.
+
+### Custom-Trained Models for Specific Species
+
+The pretrained COCO model recognises generic classes like `bird`, `cat`, and
+`dog` — it cannot distinguish a red-tailed hawk from a Cooper's hawk.  For
+species-level detection, you can fine-tune YOLO on a custom dataset:
+
+1. Collect labeled images of your target species (e.g. using
+   [Roboflow](https://roboflow.com/) or
+   [Label Studio](https://labelstud.io/))
+2. Train a custom model:
+   ```python
+   from ultralytics import YOLO
+   model = YOLO("yolo11x.pt")      # start from pretrained weights
+   model.train(data="my-birds.yaml", epochs=100, imgsz=640)
+   ```
+3. Deploy the resulting `best.pt` with `--model best.pt` — no plugin code
+   changes needed
+
+For details on training, see:
+**https://docs.ultralytics.com/modes/train/**
+
+### Object Tracking Across Frames
+
+This plugin treats each frame independently — it counts objects but has no
+concept of identity or movement over time.  A single frame of an animal
+lying down is ambiguous (resting or in distress?).  Tracking the same
+animal across frames reveals behavioral patterns: did it lie down slowly
+after unusual movements?
+
+YOLO11 supports built-in object tracking via `model.track()`, which assigns
+persistent IDs to objects across video frames.  Building a Sage plugin
+around `model.track()` instead of `model()` would enable:
+
+- **Individual animal identification** (count unique visitors, not just objects)
+- **Behavioral anomaly detection** (sudden changes in movement patterns)
+- **Dwell-time analysis** (how long a person or vehicle stays in a zone)
+
+For details on tracking, see:
+**https://docs.ultralytics.com/modes/track/**
+
+### Other YOLO Tasks (Segmentation, Pose, Classification)
+
+This plugin uses `task=detect` (bounding boxes + class labels).  YOLO11
+supports additional tasks that could be built as separate Sage plugins:
+
+| Task | What It Does | Use Case |
+|------|-------------|----------|
+| `detect` | Bounding boxes + class labels | **This plugin** — object counting |
+| `segment` | Pixel-level masks per object | Vegetation cover, water body area |
+| `pose` | Skeleton keypoints per object | Animal gait analysis, posture monitoring |
+| `classify` | Whole-image classification | Scene type (urban/rural/water/forest) |
+| `obb` | Oriented bounding boxes | Aerial/satellite imagery, angled objects |
+
+Each task uses a different model variant (e.g. `yolo11x-seg.pt` for
+segmentation, `yolo11x-pose.pt` for pose estimation).
+
+For an overview of tasks, see:
+**https://docs.ultralytics.com/tasks/**
+
+### Ultralytics Blog: Animal Monitoring with YOLO
+
+For a broader perspective on how YOLO is used in livestock management,
+wildlife conservation, and veterinary research — including non-invasive
+drone-based monitoring and behavioral AI — see:
+**https://www.ultralytics.com/blog/role-of-computer-vision-and-ultralytics-yolo11-in-animal-monitoring**
