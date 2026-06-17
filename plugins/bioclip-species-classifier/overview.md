@@ -428,10 +428,17 @@ pre-compiles CUDA kernels, reducing first-inference latency from ~45s to ~3s.
 The model download is placed *before* `COPY app.py` so that code-only
 changes don't invalidate the expensive download layer.
 
+Build locally, then publish via the Sage portal (ECR builds from
+your GitHub repo — you do not `docker push` directly):
+
 ```bash
-docker build -t registry.sagecontinuum.org/waggle/bioclip-species-classifier:0.2.0 .
-docker push registry.sagecontinuum.org/waggle/bioclip-species-classifier:0.2.0
+docker build --no-cache -t bioclip-species-classifier:0.2.0 .
 ```
+
+Then register at https://portal.sagecontinuum.org → My Apps →
+Create App → enter your GitHub repo URL.
+
+See **DOCKER-BUILD.md** for the full workflow.
 
 ### Job YAML Example
 

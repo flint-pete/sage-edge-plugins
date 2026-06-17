@@ -396,11 +396,22 @@ automatically — you only need to export it manually for ad-hoc app.py runs.
 
 ### Building the Docker Image
 
+Build locally, then publish via the Sage portal (ECR builds from
+your GitHub repo — you do not `docker push` directly):
+
 ```bash
-# On a machine with Docker:
-docker build -t registry.sagecontinuum.org/waggle/yolo-object-counter:0.2.0 .
-docker push registry.sagecontinuum.org/waggle/yolo-object-counter:0.2.0
+# Build and test locally first:
+docker build --no-cache -t yolo-object-counter:0.2.0 .
+docker run --rm --gpus all -e PYWAGGLE_LOG_DIR=/tmp/out \
+    yolo-object-counter:0.2.0 --stream bottom_camera --continuous N
 ```
+
+Then register at https://portal.sagecontinuum.org → My Apps →
+Create App → enter your GitHub repo URL. ECR builds the image
+and assigns a registry tag like:
+`registry.sagecontinuum.org/flint-pete/yolo-object-counter:0.2.0`
+
+See **DOCKER-BUILD.md** for the full workflow.
 
 ### Submitting a Job
 

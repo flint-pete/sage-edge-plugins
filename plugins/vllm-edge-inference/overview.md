@@ -423,10 +423,17 @@ ENTRYPOINT ["python", "/app/app.py"]
 baked in.  This is intentional — edge nodes may lack internet access.
 Build and push from a machine with fast upload:
 
+Build locally, then publish via the Sage portal (ECR builds from
+your GitHub repo — you do not `docker push` directly):
+
 ```bash
-docker build -t registry.sagecontinuum.org/waggle/vllm-edge-inference:0.2.0 .
-docker push registry.sagecontinuum.org/waggle/vllm-edge-inference:0.2.0
+docker build --no-cache -t vllm-edge-inference:0.2.0 .
 ```
+
+Then register at https://portal.sagecontinuum.org → My Apps →
+Create App → enter your GitHub repo URL.
+
+See **DOCKER-BUILD.md** for the full workflow.
 
 ### Job YAML Example
 

@@ -167,25 +167,56 @@ docker run --rm --gpus all --ipc=host \
 ```
 
 
-## 3. Push to Registry
+## 3. Publish to Sage ECR (Production)
 
-### Option A: Sage ECR (production)
+The Sage Edge Code Repository (ECR) is **not** a general-purpose
+Docker registry. You do not `docker push` to it. Instead, ECR
+pulls your source code from GitHub and builds the image for you.
 
-Tag for the Sage registry and push:
+### Step 1: Prepare your GitHub repo
 
-```bash
-docker tag yolo-object-counter:0.2.0 \
-    registry.sagecontinuum.org/flint-pete/yolo-object-counter:0.2.0
-docker push registry.sagecontinuum.org/flint-pete/yolo-object-counter:0.2.0
+ECR needs these files in your repo (already present in this project):
+
+- `sage.yaml` — plugin metadata (name, version, description, inputs)
+- `Dockerfile` — how to build the image
+- `ecr-meta/` directory containing:
+  - `ecr-science-description.md` — description of the science (1 page)
+  - `ecr-icon.jpg` — project icon (512×512 px)
+  - `ecr-science-image.jpg` — science image (min 1920×1080 px)
+
+Your repo must be **public** on GitHub.
+
+### Step 2: Register on the Sage portal
+
+1. Go to https://portal.sagecontinuum.org
+2. Click "Sign In" (uses Globus/CILogon — log in with your
+   university or institutional account)
+3. Go to "My Apps"
+4. Click "Create App"
+5. Enter your GitHub repo URL:
+   `https://github.com/flint-pete/sage-edge-plugins`
+6. Click "Register and Build App"
+
+ECR clones your repo, reads `sage.yaml`, and builds the Docker
+image using your `Dockerfile`. When the build succeeds, your app
+appears as "Built" with a registry tag like:
+
+```
+registry.sagecontinuum.org/flint-pete/yolo-object-counter:0.2.0
 ```
 
-Requires Sage portal credentials. See:
-https://portal.sagecontinuum.org/account/access
+### Step 3: Get the registry link
 
-### Option B: Docker save/load (no registry)
+On your app page, click the "Tags" tab to see the full registry
+URL. Use this URL in job YAMLs and `pluginctl deploy` commands.
 
-For testing without registry access, save the image to a file
-and transfer it to the Thor node:
+See: https://sagecontinuum.org/docs/tutorials/edge-apps/publishing-to-ecr
+
+
+## 4. Transfer to Thor for Testing (No ECR)
+
+For testing before publishing to ECR, transfer the locally-built
+image directly to the Thor node:
 
 ```bash
 # On the build machine
@@ -196,11 +227,11 @@ scp yolo-object-counter.tar.gz user@thor-node:~/
 sudo k3s ctr images import ~/yolo-object-counter.tar.gz
 ```
 
-Note: `k3s ctr` (not `docker load`) because Thor nodes use
+Note: Use `k3s ctr` (not `docker load`) because Thor nodes run
 containerd under k3s, not standalone Docker.
 
 
-## 4. Run on a Thor Node via pluginctl
+## 5. Run on a Thor Node via pluginctl
 
 SSH to the Thor node and use `pluginctl` (the official Sage
 plugin testing tool). All `pluginctl` commands require `sudo`
@@ -209,8 +240,8 @@ because they interact with k3s:
 ```bash
 ssh user@thor-node
 
-# If using docker save/load (Option B), the image is already imported.
-# If using Sage ECR (Option A), pluginctl pulls automatically.
+# If using docker save/load (Section 4), the image is already imported.
+# If using Sage ECR (Section 3), pluginctl pulls automatically.
 
 # Build from source (if the node has internet — rare)
 cd ~/sage-edge-plugins/plugins/yolo-object-counter
@@ -255,7 +286,7 @@ sudo pluginctl rm debug-yolo
 ```
 
 
-## 5. Verify Data
+## 6. Verify Data
 
 After running, check the published data:
 
@@ -305,7 +336,7 @@ Reasons:
 
 **pluginctl build: pip install fails with DNS resolution error**
   → The node has no outbound internet. Build on a machine with
-  internet access and transfer the image (see Section 3, Option B).
+  internet access and transfer the image (see Section 4).
 
 **numpy.core.multiarray failed to import**
   → The Dockerfile's OpenCV fix didn't run. Rebuild with --no-cache:
@@ -326,5 +357,6 @@ Reasons:
   See the Prerequisites section above for full details.
 
 **Image too large to transfer**
-  → The vLLM image is ~80 GB. Use a fast network, or build directly
-  on a machine with registry access and push to Sage ECR.
+  → The vLLM image is ~80 GB. Use a fast network or compress
+  with `docker save ... | gzip`. Alternatively, publish via
+  Sage ECR (Section 3) so nodes pull the image directly.
