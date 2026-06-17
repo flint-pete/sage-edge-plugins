@@ -10,6 +10,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# Fix OpenCV headless conflict with pre-installed version in NVIDIA base image
+RUN pip install --no-cache-dir --force-reinstall opencv-python-headless>=4.8.0
+
 # Pre-download default VLM weights into the image
 # Layer order matters: model weights change rarely, app.py changes often.
 # Putting the model download BEFORE COPY app.py means code edits don't
