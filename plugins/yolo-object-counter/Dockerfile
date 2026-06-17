@@ -8,8 +8,13 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Fix OpenCV headless conflict with pre-installed version in NVIDIA base image
-RUN pip install --no-cache-dir --force-reinstall opencv-python-headless>=4.8.0
+# The NVIDIA base image ships opencv 4.7 compiled against numpy 1.x.
+# ultralytics pulls numpy 2.x, which is binary-incompatible with that cv2.
+# Fix: fully remove old opencv (pip uninstall + rm stale files), then
+# install a fresh opencv-python-headless built against numpy 2.x.
+RUN pip uninstall -y opencv-python opencv-python-headless 2>/dev/null; \
+    rm -rf /usr/local/lib/python3.10/dist-packages/cv2* && \
+    pip install --no-cache-dir opencv-python-headless>=4.8.0
 
 # Pre-download default model weights into the image
 # Layer order matters: model weights change rarely, app.py changes often.
