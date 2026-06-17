@@ -10,11 +10,30 @@ See: https://sagecontinuum.org/docs/reference-guides/dev-quick-reference
 
 ## Prerequisites
 
-- A build machine with internet access, Docker, and an NVIDIA GPU
-  (e.g. DGX Spark). The GPU is needed for the model warmup step
-  in the Dockerfile.
+- A build machine with internet access and Docker (e.g. DGX Spark)
 - SSH access to a Thor node
 - The sage-edge-plugins repo cloned on both machines
+
+
+## Base Image
+
+All three plugins use `nvcr.io/nvidia/pytorch:25.04-py3`:
+
+| Component | Version |
+|-----------|---------|
+| CUDA | 12.9 |
+| PyTorch | 2.7 |
+| Python | 3.12 |
+| Ubuntu | 24.04 |
+| Min driver | R575+ |
+
+This image supports Blackwell GPUs (sm_120/sm_121) natively —
+no PTX JIT compilation needed. The previous base image
+(`24.06-py3`, PyTorch 2.4) only supported up to sm_90 (Hopper)
+and would silently fall back to CPU on Blackwell hardware.
+
+Both DGX Spark (GB10, driver 580.159) and Thor nodes (NVIDIA Thor,
+driver 580.00) are Blackwell architecture and require this image.
 
 
 ## 1. Build on a Machine with Internet
@@ -48,21 +67,21 @@ The vLLM image is huge because it bakes in the Qwen3-VL-32B-Instruct
 model (~67 GB). This is intentional — edge nodes cannot download
 models at runtime.
 
-### Dockerfile: OpenCV/numpy fix
+### Dockerfile: OpenCV fix
 
-All three Dockerfiles include this critical fix:
+All three Dockerfiles include this fix to ensure `opencv-python-headless`
+(no GUI) is used instead of the base image's `opencv-python` (with GUI):
 
 ```dockerfile
-# The NVIDIA base image ships opencv 4.7 compiled against numpy 1.x.
-# Our dependencies pull numpy 2.x, which is binary-incompatible.
+# Remove base image opencv, install headless variant
 RUN pip uninstall -y opencv-python opencv-python-headless 2>/dev/null; \
-    rm -rf /usr/local/lib/python3.10/dist-packages/cv2* && \
+    rm -rf /usr/local/lib/python3.*/dist-packages/cv2* && \
     pip install --no-cache-dir opencv-python-headless>=4.8.0
 ```
 
-Without this, `import cv2` fails with `numpy.core.multiarray failed
-to import`. The `rm -rf cv2*` is necessary because `pip uninstall`
-leaves stale `.so` files that shadow the fresh install.
+Edge nodes are headless — the GUI variant wastes space and can cause
+import conflicts. The `rm -rf cv2*` clears stale files that
+`pip uninstall` sometimes leaves behind.
 
 
 ## 2. Test Locally on the Build Machine
