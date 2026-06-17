@@ -424,8 +424,8 @@ baked in.  This is intentional — edge nodes may lack internet access.
 Build and push from a machine with fast upload:
 
 ```bash
-docker build -t registry.sagecontinuum.org/waggle/vllm-edge-inference:0.1.0 .
-docker push registry.sagecontinuum.org/waggle/vllm-edge-inference:0.1.0
+docker build -t registry.sagecontinuum.org/waggle/vllm-edge-inference:0.2.0 .
+docker push registry.sagecontinuum.org/waggle/vllm-edge-inference:0.2.0
 ```
 
 ### Job YAML Example
@@ -438,7 +438,7 @@ name: vllm-scene-description
 plugins:
   - name: vllm-edge-inference
     pluginSpec:
-      image: registry.sagecontinuum.org/waggle/vllm-edge-inference:0.1.0
+      image: registry.sagecontinuum.org/waggle/vllm-edge-inference:0.2.0
       args:
         - "--stream"
         - "bottom_camera"

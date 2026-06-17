@@ -46,21 +46,21 @@ and HuggingFace, then transferred to the node.
 
 ```bash
 cd ~/AI-projects/Sage-agents/plugins/yolo-object-counter
-docker build --no-cache -t yolo-object-counter:0.1.0 .
+docker build --no-cache -t yolo-object-counter:0.2.0 .
 ```
 
 ### BioCLIP Species Classifier (~6 GB image, ~10 min build)
 
 ```bash
 cd ~/AI-projects/Sage-agents/plugins/bioclip-species-classifier
-docker build --no-cache -t bioclip-species-classifier:0.1.0 .
+docker build --no-cache -t bioclip-species-classifier:0.2.0 .
 ```
 
 ### vLLM Edge Inference (~80 GB image, ~30 min build)
 
 ```bash
 cd ~/AI-projects/Sage-agents/plugins/vllm-edge-inference
-docker build --no-cache -t vllm-edge-inference:0.1.0 .
+docker build --no-cache -t vllm-edge-inference:0.2.0 .
 ```
 
 The vLLM image is huge because it bakes in the Qwen3-VL-32B-Instruct
@@ -93,21 +93,21 @@ Before pushing to a registry, verify the image works:
 docker run --rm --gpus all \
     -v ~/AI-projects/Sage-agents/plugins/yolo-object-counter/tests/test-images:/images:ro \
     -e PYWAGGLE_LOG_DIR=/tmp/test-output \
-    yolo-object-counter:0.1.0 \
+    yolo-object-counter:0.2.0 \
     --image-dir /images --continuous N
 
 # BioCLIP
 docker run --rm --gpus all \
     -v ~/AI-projects/Sage-agents/plugins/bioclip-species-classifier/tests/test-images:/images:ro \
     -e PYWAGGLE_LOG_DIR=/tmp/test-output \
-    bioclip-species-classifier:0.1.0 \
+    bioclip-species-classifier:0.2.0 \
     --image-dir /images --continuous N
 
 # vLLM — single image (launches vLLM server internally)
 docker run --rm --gpus all --ipc=host \
     -v ~/AI-projects/Sage-agents/plugins/vllm-edge-inference/tests/test-images:/images:ro \
     -e PYWAGGLE_LOG_DIR=/tmp/test-output \
-    vllm-edge-inference:0.1.0 \
+    vllm-edge-inference:0.2.0 \
     --stream /images/test-image001.jpg --continuous N \
     --enforce-eager --gpu-mem-frac 0.58
 ```
@@ -120,9 +120,9 @@ docker run --rm --gpus all --ipc=host \
 Tag for the Sage registry and push:
 
 ```bash
-docker tag yolo-object-counter:0.1.0 \
-    registry.sagecontinuum.org/flint-pete/yolo-object-counter:0.1.0
-docker push registry.sagecontinuum.org/flint-pete/yolo-object-counter:0.1.0
+docker tag yolo-object-counter:0.2.0 \
+    registry.sagecontinuum.org/flint-pete/yolo-object-counter:0.2.0
+docker push registry.sagecontinuum.org/flint-pete/yolo-object-counter:0.2.0
 ```
 
 Requires Sage portal credentials. See:
@@ -135,7 +135,7 @@ and transfer it to the Thor node:
 
 ```bash
 # On the build machine
-docker save yolo-object-counter:0.1.0 | gzip > yolo-object-counter.tar.gz
+docker save yolo-object-counter:0.2.0 | gzip > yolo-object-counter.tar.gz
 scp yolo-object-counter.tar.gz user@thor-node:~/
 
 # On the Thor node
@@ -170,7 +170,7 @@ sudo pluginctl deploy -n yolo-counter \
 
 # Or deploy from the Sage registry
 sudo pluginctl deploy -n yolo-counter \
-    registry.sagecontinuum.org/flint-pete/yolo-object-counter:0.1.0 \
+    registry.sagecontinuum.org/flint-pete/yolo-object-counter:0.2.0 \
     -- --stream bottom_camera --continuous N
 
 # Check status

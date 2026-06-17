@@ -398,8 +398,8 @@ automatically — you only need to export it manually for ad-hoc app.py runs.
 
 ```bash
 # On a machine with Docker:
-docker build -t registry.sagecontinuum.org/waggle/yolo-object-counter:0.1.0 .
-docker push registry.sagecontinuum.org/waggle/yolo-object-counter:0.1.0
+docker build -t registry.sagecontinuum.org/waggle/yolo-object-counter:0.2.0 .
+docker push registry.sagecontinuum.org/waggle/yolo-object-counter:0.2.0
 ```
 
 ### Submitting a Job
@@ -411,7 +411,7 @@ name: yolo-bird-counter
 plugins:
   - name: yolo-object-counter
     pluginSpec:
-      image: registry.sagecontinuum.org/waggle/yolo-object-counter:0.1.0
+      image: registry.sagecontinuum.org/waggle/yolo-object-counter:0.2.0
       args:
         - "--stream"
         - "bottom_camera"
@@ -444,7 +444,7 @@ sesctl sub yolo-bird-counter
 ssh waggle-dev-node-V032
 pluginctl build .
 pluginctl run --name yolo-counter \
-    registry.sagecontinuum.org/waggle/yolo-object-counter:0.1.0 \
+    registry.sagecontinuum.org/waggle/yolo-object-counter:0.2.0 \
     -- --stream bottom_camera --classes bird --continuous N
 pluginctl logs yolo-counter
 ```

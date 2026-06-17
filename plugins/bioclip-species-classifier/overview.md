@@ -429,8 +429,8 @@ The model download is placed *before* `COPY app.py` so that code-only
 changes don't invalidate the expensive download layer.
 
 ```bash
-docker build -t registry.sagecontinuum.org/waggle/bioclip-species-classifier:0.1.0 .
-docker push registry.sagecontinuum.org/waggle/bioclip-species-classifier:0.1.0
+docker build -t registry.sagecontinuum.org/waggle/bioclip-species-classifier:0.2.0 .
+docker push registry.sagecontinuum.org/waggle/bioclip-species-classifier:0.2.0
 ```
 
 ### Job YAML Example
@@ -443,7 +443,7 @@ name: bioclip-bird-survey
 plugins:
   - name: bioclip-species-classifier
     pluginSpec:
-      image: registry.sagecontinuum.org/waggle/bioclip-species-classifier:0.1.0
+      image: registry.sagecontinuum.org/waggle/bioclip-species-classifier:0.2.0
       args:
         - "--stream"
         - "bottom_camera"

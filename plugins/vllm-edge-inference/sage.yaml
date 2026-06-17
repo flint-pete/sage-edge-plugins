@@ -1,6 +1,6 @@
 name: "vllm-edge-inference"
 namespace: "waggle"
-version: "0.1.0"
+version: "0.2.0"
 description: "Vision-language model inference at the edge — runs Qwen3-VL-32B-Instruct via vLLM to generate natural-language scene descriptions and summaries from camera images in real-time."
 authors: "Pete Beckman <pete.beckman@northwestern.edu>"
 collaborators: "Waggle Team <https://wa8.gl>"

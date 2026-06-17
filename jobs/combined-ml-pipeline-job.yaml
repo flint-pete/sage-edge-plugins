@@ -7,7 +7,7 @@ name: ml-pipeline-full
 plugins:
   - name: yolo-object-counter
     pluginSpec:
-      image: registry.sagecontinuum.org/waggle/yolo-object-counter:0.1.0
+      image: registry.sagecontinuum.org/waggle/yolo-object-counter:0.2.0
       args:
         - "--stream"
         - "bottom_camera"
@@ -24,7 +24,7 @@ plugins:
 
   - name: bioclip-species-classifier
     pluginSpec:
-      image: registry.sagecontinuum.org/waggle/bioclip-species-classifier:0.1.0
+      image: registry.sagecontinuum.org/waggle/bioclip-species-classifier:0.2.0
       args:
         - "--stream"
         - "bottom_camera"
@@ -39,7 +39,7 @@ plugins:
 
   - name: vllm-edge-inference
     pluginSpec:
-      image: registry.sagecontinuum.org/waggle/vllm-edge-inference:0.1.0
+      image: registry.sagecontinuum.org/waggle/vllm-edge-inference:0.2.0
       args:
         - "--stream"
         - "bottom_camera"

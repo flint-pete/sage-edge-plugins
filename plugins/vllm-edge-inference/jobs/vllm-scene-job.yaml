@@ -7,7 +7,7 @@ name: vllm-scene-description
 plugins:
   - name: vllm-edge-inference
     pluginSpec:
-      image: registry.sagecontinuum.org/waggle/vllm-edge-inference:0.1.0
+      image: registry.sagecontinuum.org/waggle/vllm-edge-inference:0.2.0
       args:
         - "--stream"
         - "bottom_camera"

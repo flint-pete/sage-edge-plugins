@@ -23,16 +23,16 @@ run via pluginctl. Full instructions in **DOCKER-BUILD.md**.
 ```bash
 # === On the build machine (DGX Spark) ===
 cd ~/AI-projects/Sage-agents/plugins/yolo-object-counter
-docker build --no-cache -t yolo-object-counter:0.1.0 .
+docker build --no-cache -t yolo-object-counter:0.2.0 .
 
 # Save and transfer to Thor
-docker save yolo-object-counter:0.1.0 | gzip > /tmp/yolo.tar.gz
+docker save yolo-object-counter:0.2.0 | gzip > /tmp/yolo.tar.gz
 scp /tmp/yolo.tar.gz user@thor-node:~/
 
 # === On the Thor node ===
 sudo k3s ctr images import ~/yolo.tar.gz
 sudo pluginctl deploy -n yolo-counter \
-    docker.io/library/yolo-object-counter:0.1.0 \
+    docker.io/library/yolo-object-counter:0.2.0 \
     -- --stream bottom_camera --continuous N
 pluginctl logs yolo-counter
 sudo pluginctl rm yolo-counter

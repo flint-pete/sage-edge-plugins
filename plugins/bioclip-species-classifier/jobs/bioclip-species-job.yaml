@@ -7,7 +7,7 @@ name: bioclip-species-w019
 plugins:
   - name: bioclip-species-classifier
     pluginSpec:
-      image: registry.sagecontinuum.org/waggle/bioclip-species-classifier:0.1.0
+      image: registry.sagecontinuum.org/waggle/bioclip-species-classifier:0.2.0
       args:
         - "--stream"
         - "bottom_camera"

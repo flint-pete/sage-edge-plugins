@@ -1,6 +1,6 @@
 name: "yolo-object-counter"
 namespace: "waggle"
-version: "0.1.0"
+version: "0.2.0"
 description: "YOLO11x object counter — detects and counts objects in camera frames, publishes per-class counts and uploads annotated images. Runs real-time on GPU-equipped edge nodes."
 authors: "Pete Beckman <pete.beckman@northwestern.edu>"
 collaborators: "Waggle Team <https://wa8.gl>"
