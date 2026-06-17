@@ -31,11 +31,11 @@ scp /tmp/yolo.tar.gz user@thor-node:~/
 
 # === On the Thor node ===
 sudo k3s ctr images import ~/yolo.tar.gz
-sudo pluginctl deploy -n test-yolo \
+sudo pluginctl deploy -n yolo-counter \
     docker.io/library/yolo-object-counter:0.1.0 \
     -- --stream bottom_camera --continuous N
-pluginctl logs test-yolo
-sudo pluginctl rm test-yolo
+pluginctl logs yolo-counter
+sudo pluginctl rm yolo-counter
 ```
 
 ### Why this approach?

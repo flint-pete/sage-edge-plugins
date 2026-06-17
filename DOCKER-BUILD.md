@@ -164,12 +164,12 @@ sudo pluginctl build .
 # Output: 10.31.81.1:5000/local/yolo-object-counter
 
 # Deploy (run the container)
-sudo pluginctl deploy -n test-yolo \
+sudo pluginctl deploy -n yolo-counter \
     10.31.81.1:5000/local/yolo-object-counter \
     -- --stream bottom_camera --continuous N
 
 # Or deploy from the Sage registry
-sudo pluginctl deploy -n test-yolo \
+sudo pluginctl deploy -n yolo-counter \
     registry.sagecontinuum.org/flint-pete/yolo-object-counter:0.1.0 \
     -- --stream bottom_camera --continuous N
 
@@ -177,10 +177,10 @@ sudo pluginctl deploy -n test-yolo \
 sudo pluginctl ps
 
 # View logs
-pluginctl logs test-yolo
+pluginctl logs yolo-counter
 
 # Stop the plugin (important — plugins run forever if not stopped)
-sudo pluginctl rm test-yolo
+sudo pluginctl rm yolo-counter
 ```
 
 ### Debugging inside the container

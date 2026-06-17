@@ -443,10 +443,10 @@ sesctl sub yolo-bird-counter
 ```bash
 ssh waggle-dev-node-V032
 pluginctl build .
-pluginctl run --name test-yolo \
+pluginctl run --name yolo-counter \
     registry.sagecontinuum.org/waggle/yolo-object-counter:0.1.0 \
     -- --stream bottom_camera --classes bird --continuous N
-pluginctl logs test-yolo
+pluginctl logs yolo-counter
 ```
 
 ---
