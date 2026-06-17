@@ -15,6 +15,10 @@ docs explicitly state:
 > Use Docker container or pluginctl commands.
 > — https://sagecontinuum.org/docs/reference-guides/dev-quick-reference
 
+**Important:** Before running GPU containers on your build machine,
+make sure the NVIDIA Container Toolkit is configured for Docker.
+See the "NVIDIA Container Toolkit Setup" section in **DOCKER-BUILD.md**.
+
 ### Quick start
 
 Build on a machine with internet (DGX Spark), transfer to Thor,
@@ -255,6 +259,13 @@ deactivate
 **pluginctl build: pip install fails with DNS error**
   → The node has no outbound internet. Build the Docker image on a
   machine with internet and transfer it. See DOCKER-BUILD.md.
+
+**"unknown or invalid runtime name: nvidia" (on build machine)**
+  → The NVIDIA Container Toolkit is installed but not configured
+  for Docker. Run:
+  `sudo nvidia-ctk runtime configure --runtime=docker`
+  `sudo systemctl restart docker`
+  See DOCKER-BUILD.md for full setup instructions.
 
 **YOLO model downloads on first run**
   → Normal for direct execution. Ultralytics auto-downloads

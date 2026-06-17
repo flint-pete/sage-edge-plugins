@@ -13,6 +13,60 @@ See: https://sagecontinuum.org/docs/reference-guides/dev-quick-reference
 - A build machine with internet access and Docker (e.g. DGX Spark)
 - SSH access to a Thor node
 - The sage-edge-plugins repo cloned on both machines
+- NVIDIA Container Toolkit configured for Docker (see below)
+
+### NVIDIA Container Toolkit Setup
+
+Docker needs the NVIDIA Container Toolkit to pass GPUs into
+containers. The toolkit may already be **installed** but not
+**configured** — both steps are required. Without this, `docker run
+--gpus all` fails with:
+
+```
+docker: Error response from daemon: unknown or invalid runtime name: nvidia
+```
+
+**Check if it's already working:**
+
+```bash
+docker run --rm --gpus all nvidia/cuda:12.9.0-base-ubuntu24.04 nvidia-smi
+```
+
+If that prints your GPU info, you're set. If it fails, follow
+these steps:
+
+**Step 1: Install the toolkit (if not already installed)**
+
+```bash
+# Check if installed
+dpkg -l | grep nvidia-container-toolkit
+
+# If not installed, follow:
+# https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
+```
+
+**Step 2: Configure Docker to use the nvidia runtime**
+
+```bash
+sudo nvidia-ctk runtime configure --runtime=docker
+sudo systemctl restart docker
+```
+
+This writes the nvidia runtime entry into `/etc/docker/daemon.json`
+and restarts Docker so it picks up the change.
+
+**Step 3: Verify**
+
+```bash
+docker info | grep -i runtime
+#  Runtimes: runc io.containerd.runc.v2 nvidia   ← nvidia must appear
+```
+
+This is a one-time setup per machine. Thor nodes have this
+pre-configured by the Sage platform, but development machines
+(DGX Spark, personal workstations) may need it.
+
+See: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
 
 
 ## Base Image
@@ -258,8 +312,18 @@ Reasons:
   `docker build --no-cache -t <name> .`
 
 **"No CUDA GPUs are available" inside container**
-  → Missing --gpus all flag, or NVIDIA Container Toolkit not installed.
-  Check: `docker run --rm --gpus all nvidia/cuda:12.0.0-base nvidia-smi`
+  → Missing `--gpus all` flag, or NVIDIA Container Toolkit not
+  configured. Run the setup steps in the Prerequisites section above.
+  Quick check: `docker run --rm --gpus all nvidia/cuda:12.9.0-base-ubuntu24.04 nvidia-smi`
+
+**"unknown or invalid runtime name: nvidia"**
+  → The NVIDIA Container Toolkit is installed but not configured.
+  Run:
+  ```
+  sudo nvidia-ctk runtime configure --runtime=docker
+  sudo systemctl restart docker
+  ```
+  See the Prerequisites section above for full details.
 
 **Image too large to transfer**
   → The vLLM image is ~80 GB. Use a fast network, or build directly
