@@ -1,8 +1,0 @@
-tests/
-ecr-meta/
-jobs/
-__pycache__/
-*.pyc
-*.md
-.git/
-.gitignore
